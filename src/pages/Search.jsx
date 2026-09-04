@@ -34,7 +34,7 @@ export default function Search() {
         <p className="text-gray-500">Sin resultados.</p>
       )}
 
-      <div className="flex flex-wrap gap-4">
+      <div className="grid grid-cols-3 gap-x-3 gap-y-7 pb-20 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
         {results.map((item) => (
           <PosterCard key={`${item.media_type}-${item.id}`} item={item} />
         ))}

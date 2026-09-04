@@ -13,7 +13,7 @@ export default function PosterCard({ item }) {
   return (
     <Link
       to={`/${type}/${id}`}
-      className="group w-[170px] shrink-0 cursor-pointer"
+      className="group w-full cursor-pointer"
     >
       <div
         className="mb-2.5 aspect-[2/3] w-full overflow-hidden rounded-[10px] bg-cover bg-center transition-transform duration-200 group-hover:-translate-y-1.5 group-hover:scale-[1.02] group-hover:shadow-[0_16px_30px_rgba(0,0,0,0.5),0_0_0_1px_rgba(127,231,212,0.35)]"

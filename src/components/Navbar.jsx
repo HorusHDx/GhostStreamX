@@ -46,7 +46,7 @@ export default function Navbar() {
 
       <form
         onSubmit={submit}
-        className="flex min-w-[200px] items-center gap-2.5 rounded-[20px] border border-white/10 bg-white/5 px-3.5 py-2 text-[0.88rem] text-dimtext transition focus-within:border-spectral-dim focus-within:bg-white/10"
+        className="ml-3 flex min-w-0 max-w-[220px] flex-1 items-center gap-2.5 rounded-[20px] border border-white/10 bg-white/5 px-3.5 py-2 text-[0.88rem] text-dimtext transition focus-within:border-spectral-dim focus-within:bg-white/10 md:ml-0 md:max-w-none md:flex-none md:min-w-[200px]"
       >
         <svg
           width="15"

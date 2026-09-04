@@ -68,7 +68,7 @@ export default function Detail({ type }) {
         >
           <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/60 to-transparent" />
           <div className="absolute bottom-8 px-6">
-            <h1 className="mb-2 font-display text-4xl font-extrabold tracking-tight">{title}</h1>
+            <h1 className="mb-2 font-display text-3xl font-extrabold tracking-tight md:text-4xl">{title}</h1>
             <p className="mb-4 text-sm text-dimtext">
               {year}
               {data.vote_average ? ` · ★ ${data.vote_average.toFixed(1)}` : ''}
@@ -174,7 +174,9 @@ export default function Detail({ type }) {
             </div>
             <div ref={recTrackRef} className="flex gap-4 overflow-x-auto pb-1 no-scrollbar">
               {recs.map((item) => (
-                <PosterCard key={`${item.media_type}-${item.id}`} item={item} />
+                <div key={`${item.media_type}-${item.id}`} className="w-[170px] shrink-0">
+                  <PosterCard item={item} />
+                </div>
               ))}
             </div>
           </div>

@@ -427,7 +427,9 @@ export default function Watch({ type }) {
           </div>
           <div ref={recTrackRef} className="flex gap-4 overflow-x-auto pb-1 no-scrollbar">
             {recs.map((item) => (
-              <PosterCard key={`${item.media_type}-${item.id}`} item={item} />
+              <div key={`${item.media_type}-${item.id}`} className="w-[170px] shrink-0">
+                <PosterCard item={item} />
+              </div>
             ))}
           </div>
         </div>
