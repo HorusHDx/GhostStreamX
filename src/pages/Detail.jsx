@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api.js'
+import PosterCard from '../components/PosterCard.jsx'
 
 const IMG_BASE = 'https://image.tmdb.org/t/p/w780'
 
@@ -9,14 +10,24 @@ export default function Detail({ type }) {
   const [data, setData] = useState(null)
   const [season, setSeason] = useState(1)
   const [episodes, setEpisodes] = useState([])
+  const [recs, setRecs] = useState([])
   const [error, setError] = useState('')
+  const recTrackRef = useRef(null)
 
   useEffect(() => {
     setData(null)
     setError('')
+    setRecs([])
     const p = type === 'movie' ? api.movie(id) : api.tv(id)
     p.then((d) => setData(d))
       .catch((e) => setError(e.message))
+    // Recomendados reales: secuelas, misma saga y similares.
+    const r = type === 'movie' ? api.movieRecs(id) : api.tvRecs(id)
+    r.then((d) =>
+      setRecs(
+        (d.items || []).filter((t) => String(t.id) !== String(id)).slice(0, 12)
+      )
+    ).catch(() => {})
   }, [type, id])
 
   useEffect(() => {
@@ -128,6 +139,42 @@ export default function Detail({ type }) {
                     </p>
                   </div>
                 </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recomendados: secuelas, saga y similares */}
+        {recs.length > 0 && (
+          <div className="mt-10">
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="font-display text-[1.25rem] font-bold tracking-tight">
+                También te puede interesar
+              </h2>
+              <div className="hidden gap-2 md:flex">
+                <button
+                  onClick={() => recTrackRef.current?.scrollBy({ left: -420, behavior: 'smooth' })}
+                  aria-label="Anterior"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-dimtext transition hover:bg-white/10 hover:text-white"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => recTrackRef.current?.scrollBy({ left: 420, behavior: 'smooth' })}
+                  aria-label="Siguiente"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-dimtext transition hover:bg-white/10 hover:text-white"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div ref={recTrackRef} className="flex gap-4 overflow-x-auto pb-1 no-scrollbar">
+              {recs.map((item) => (
+                <PosterCard key={`${item.media_type}-${item.id}`} item={item} />
               ))}
             </div>
           </div>

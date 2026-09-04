@@ -5,7 +5,6 @@ import Player from '../components/Player.jsx'
 import PosterCard from '../components/PosterCard.jsx'
 
 const HISTORY_KEY = 'ghoststreamx_history'
-const AUTOPLAY_KEY = 'ghoststreamx_autoplay'
 const STILL = 'https://image.tmdb.org/t/p/w500'
 
 function saveProgress(key, seconds, meta = {}) {
@@ -49,28 +48,11 @@ export default function Watch({ type }) {
   const [seasonNum, setSeasonNum] = useState(Number(seasonParam) || 1)
   const [episodes, setEpisodes] = useState([])
   const [recs, setRecs] = useState([])
-  const [autoplay, setAutoplay] = useState(() => {
-    try {
-      return localStorage.getItem(AUTOPLAY_KEY) !== '0'
-    } catch {
-      return true
-    }
-  })
 
   const epTrackRef = useRef(null)
   const recTrackRef = useRef(null)
   const scrollRail = (ref, dir) =>
     ref.current?.scrollBy({ left: dir * 420, behavior: 'smooth' })
-
-  const toggleAutoplay = () => {
-    const next = !autoplay
-    setAutoplay(next)
-    try {
-      localStorage.setItem(AUTOPLAY_KEY, next ? '1' : '0')
-    } catch {
-      /* ignore */
-    }
-  }
 
   // Mantiene la temporada del selector sincronizada con la URL.
   useEffect(() => {
@@ -166,7 +148,9 @@ export default function Watch({ type }) {
     type === 'tv' && episodeParam
       ? episodes.find((e) => e.episode_number === Number(episodeParam) + 1)
       : null
-  const showNext = autoplay && nextEpisode && String(seasonNum) === String(seasonParam || seasonNum)
+  // El botón "Siguiente" siempre está disponible: el avance automático real
+  // no es posible dentro de un iframe externo (no se detecta el fin del video).
+  const showNext = !!nextEpisode
 
   const genresText = (meta.genres || []).join(', ')
   const sub =
@@ -290,25 +274,6 @@ export default function Watch({ type }) {
                 </svg>
               </div>
             </div>
-
-            <div className="flex items-center gap-2.5 text-[0.85rem] text-dimtext max-md:w-full max-md:justify-between md:ml-auto md:self-end md:pb-2">
-              Reproducción automática
-              <button
-                onClick={toggleAutoplay}
-                role="switch"
-                aria-checked={autoplay}
-                aria-label="Reproducción automática"
-                className={`relative h-[22px] w-[38px] rounded-[12px] transition ${
-                  autoplay ? 'bg-spectral shadow-[0_0_10px_rgba(127,231,212,0.35)]' : 'bg-white/15'
-                }`}
-              >
-                <span
-                  className={`absolute left-[2px] top-[2px] h-[18px] w-[18px] rounded-full bg-white transition-transform ${
-                    autoplay ? 'translate-x-4' : ''
-                  }`}
-                />
-              </button>
-            </div>
           </div>
 
           {(currentEpisode?.overview || (type === 'movie' && meta.overview)) && (
@@ -319,7 +284,7 @@ export default function Watch({ type }) {
 
           {showNext && (
             <Link
-              to={`/watch/tv/${id}?season=${seasonParam}&episode=${nextEpisode.episode_number}`}
+              to={`/watch/tv/${id}?season=${seasonNum}&episode=${nextEpisode.episode_number}`}
               className="mt-5 inline-flex items-center gap-2 rounded-full border border-spectral-dim px-5 py-2.5 text-[0.9rem] font-semibold text-spectral transition hover:bg-spectral-dim"
             >
               Siguiente episodio: E{nextEpisode.episode_number}
