@@ -12,6 +12,9 @@ export const api = {
   // Filas para el home
   trending: () => get('/trending'),
 
+  // Home completo (hero + top + redes + géneros)
+  home: () => get('/home'),
+
   // Búsqueda (películas + series)
   search: (q) => get(`/search?q=${encodeURIComponent(q)}`),
 

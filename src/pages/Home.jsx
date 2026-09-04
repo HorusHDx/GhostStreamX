@@ -1,37 +1,56 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import Hero from '../components/Hero.jsx'
+import TopRow from '../components/TopRow.jsx'
 import Row from '../components/Row.jsx'
 
 export default function Home() {
-  const [sections, setSections] = useState([])
+  const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
     api
-      .trending()
-      .then((data) => setSections(data.sections || []))
+      .home()
+      .then((d) => setData(d))
       .catch((e) => setError(e.message))
   }, [])
 
-  return (
-    <div className="pt-20">
-      <div className="px-6 pb-8">
-        <h1 className="text-3xl font-bold">Inicio</h1>
-      </div>
-
-      {error && (
+  if (error) {
+    return (
+      <div className="pt-24">
         <p className="px-6 text-red-400">
           Error al cargar. Asegúrate de que el backend esté corriendo: {error}
         </p>
-      )}
+      </div>
+    )
+  }
 
-      {!error && sections.length === 0 && (
-        <p className="px-6 text-gray-500">Cargando contenido…</p>
-      )}
+  if (!data) {
+    return (
+      <div className="flex h-screen items-center justify-center text-gray-500">
+        Cargando contenido…
+      </div>
+    )
+  }
 
-      {sections.map((row) => (
-        <Row key={row.title} title={row.title} items={row.items} />
-      ))}
+  const sections = data.sections || []
+
+  return (
+    <div className="pb-16">
+      <Hero items={data.hero} />
+
+      {sections.map((row) =>
+        row.top ? (
+          <TopRow
+            key={row.title}
+            title={row.title}
+            items={row.items}
+            type={row.type}
+          />
+        ) : (
+          <Row key={row.title} title={row.title} items={row.items} />
+        )
+      )}
     </div>
   )
 }

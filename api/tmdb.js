@@ -35,7 +35,7 @@ async function call(path, params = {}) {
   return data
 }
 
-// Redondea resultado de listas para el front (poster pequeño)
+// Redondea resultado de listas para el front (poster pequeño + backdrop para hero)
 function trimList(obj, itemsKey = 'results') {
   const list = obj[itemsKey] || []
   return list.map((it) => ({
@@ -44,7 +44,9 @@ function trimList(obj, itemsKey = 'results') {
     title: it.title || it.name,
     release_date: it.release_date || it.first_air_date,
     poster_path: it.poster_path ? `${IMG}/w500${it.poster_path}` : null,
+    backdrop_path: it.backdrop_path ? `${IMG}/w1280${it.backdrop_path}` : null,
     vote_average: it.vote_average,
+    overview: it.overview || '',
   }))
 }
 
@@ -68,4 +70,20 @@ export const tmdb = {
 
   trendingMovies: () => call('/movie/popular').then(trimList),
   trendingTv: () => call('/tv/popular').then(trimList),
+
+  // --- Top del día (trending) ---
+  topMoviesToday: () => call('/trending/movie/day').then(trimList),
+  topTvToday: () => call('/trending/tv/day').then(trimList),
+
+  // --- Discovering por proveedor / red ---
+  discoverByNetwork: (networkId) =>
+    call('/discover/tv', { with_networks: networkId }).then(trimList),
+
+  // --- Discovering por género ---
+  discoverByGenre: (genreId, type = 'tv') =>
+    call(`/discover/${type}`, { with_genres: genreId }).then(trimList),
+
+  // --- Riqueza para detalles/slider (incluye backdrop) ---
+  detailMovie: (id) => call(`/movie/${id}`),
+  detailTv: (id) => call(`/tv/${id}`),
 }

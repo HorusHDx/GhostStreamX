@@ -25,6 +25,55 @@ export async function handleTrending(req, res) {
   }
 }
 
+// Home completo (estilo cinehax): hero + top hoy + filas por red + géneros
+export async function handleHome(req, res) {
+  try {
+    const [
+      heroMovies,
+      topMovies,
+      topTv,
+      netflix,
+      prime,
+      hbo,
+      actionTv,
+      comedyTv,
+      scifiTv,
+      mysteryTv,
+    ] = await Promise.allSettled([
+      tmdb.topMoviesToday(),                  // para el hero slider
+      tmdb.topMoviesToday(),                  // top películas hoy
+      tmdb.topTvToday(),                      // top series hoy
+      tmdb.discoverByNetwork(213),            // Netflix
+      tmdb.discoverByNetwork(1024),           // Prime Video
+      tmdb.discoverByNetwork(49),             // HBO
+      tmdb.discoverByGenre(10759, 'tv'),      // acción y aventura
+      tmdb.discoverByGenre(35, 'tv'),         // comedia
+      tmdb.discoverByGenre(10765, 'tv'),      // ciencia ficción y fantasía
+      tmdb.discoverByGenre(9648, 'tv'),       // misterio
+    ])
+
+    const val = (r) => (r.status === 'fulfilled' ? r.value : [])
+    const hero = val(heroMovies).slice(0, 10)
+
+    res.json({
+      hero,
+      sections: [
+        { title: 'Top películas hoy', items: val(topMovies), top: true, type: 'movie' },
+        { title: 'Top series hoy', items: val(topTv), top: true, type: 'tv' },
+        { title: 'Series de Netflix', items: val(netflix) },
+        { title: 'Series de Prime Video', items: val(prime) },
+        { title: 'Series de HBO', items: val(hbo) },
+        { title: 'Acción y Aventura', items: val(actionTv) },
+        { title: 'Comedia', items: val(comedyTv) },
+        { title: 'Ciencia Ficción y Fantasía', items: val(scifiTv) },
+        { title: 'Misterio', items: val(mysteryTv) },
+      ],
+    })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+
 // Búsqueda multi (películas + series)
 export async function handleSearch(req, res) {
   try {

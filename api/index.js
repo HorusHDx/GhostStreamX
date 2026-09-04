@@ -12,6 +12,7 @@ import express from 'express'
 import cors from 'cors'
 import {
   handleTrending,
+  handleHome,
   handleSearch,
   handleMovie,
   handleTv,
@@ -30,6 +31,7 @@ app.use(express.json())
 const api = express.Router()
 
 api.get('/trending', handleTrending)
+api.get('/home', handleHome)
 api.get('/search', handleSearch)
 api.get('/movie/:id', handleMovie)
 api.get('/tv/:id', handleTv)
