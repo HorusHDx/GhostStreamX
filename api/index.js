@@ -11,7 +11,6 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import {
-  handleTrending,
   handleHome,
   handlePlatforms,
   handlePlataforma,
@@ -34,7 +33,6 @@ app.use(express.json())
 // en cómo Vercel pasa la ruta a la función Express.
 const api = express.Router()
 
-api.get('/trending', handleTrending)
 api.get('/home', handleHome)
 api.get('/platforms', handlePlatforms)
 api.get('/plataforma/:id', handlePlataforma)

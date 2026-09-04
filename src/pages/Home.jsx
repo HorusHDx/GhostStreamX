@@ -35,7 +35,7 @@ export default function Home() {
     )
   }
 
-  const rows = (data.sections || []).filter((s) => !s.title.startsWith('Series de'))
+  const rows = data.sections || []
 
   return (
     <div className="pb-20">

@@ -4,41 +4,15 @@ import { resolveSources } from './sources.js'
 import { PLATAFORMAS } from './plataformas.js'
 
 // Home: varias filas de contenido
-export async function handleTrending(req, res) {
-  try {
-    const [trendingMovies, trendingTv] = await Promise.all([
-      tmdb.trendingMovies(),
-      tmdb.trendingTv(),
-    ])
-    const trendingAll = [
-      ...trendingMovies.map((m) => ({ ...m, media_type: 'movie' })),
-      ...trendingTv.map((s) => ({ ...s, media_type: 'tv' })),
-    ]
-    res.json({
-      sections: [
-        { title: 'Películas populares', items: trendingMovies },
-        { title: 'Series populares', items: trendingTv },
-        { title: 'Destacados', items: trendingAll },
-      ],
-    })
-  } catch (e) {
-    res.status(500).json({ error: e.message })
-  }
-}
 
-// Home completo (estilo cinehax): hero + top hoy + filas por red + géneros
+// Home completo (estilo cinehax): hero + top hoy + géneros.
+// Las filas por red las cubre /platforms, así que /home solo trae 7 llamadas.
 export async function handleHome(req, res) {
   try {
     const [
       heroMovies,
       topMovies,
       topTv,
-      netflix,
-      prime,
-      hbo,
-      disney,
-      apple,
-      paramount,
       actionTv,
       comedyTv,
       scifiTv,
@@ -47,12 +21,6 @@ export async function handleHome(req, res) {
       tmdb.topMoviesToday(),                  // para el hero slider
       tmdb.topMoviesToday(),                  // top películas hoy
       tmdb.topTvToday(),                      // top series hoy
-      tmdb.discoverByNetwork(213),            // Netflix
-      tmdb.discoverByNetwork(1024),           // Prime Video
-      tmdb.discoverByNetwork(49),             // HBO / Max
-      tmdb.discoverByNetwork(2739),           // Disney+
-      tmdb.discoverByNetwork(2552),           // Apple TV+
-      tmdb.discoverByNetwork(158),            // Paramount+
       tmdb.discoverByGenre(10759, 'tv'),      // acción y aventura
       tmdb.discoverByGenre(35, 'tv'),         // comedia
       tmdb.discoverByGenre(10765, 'tv'),      // ciencia ficción y fantasía
@@ -67,12 +35,6 @@ export async function handleHome(req, res) {
       sections: [
         { title: 'Top películas hoy', items: val(topMovies), top: true, type: 'movie' },
         { title: 'Top series hoy', items: val(topTv), top: true, type: 'tv' },
-        { title: 'Series de Netflix', items: val(netflix) },
-        { title: 'Series de Prime Video', items: val(prime) },
-        { title: 'Series de HBO y Max', items: val(hbo) },
-        { title: 'Series de Disney+', items: val(disney) },
-        { title: 'Series de Apple TV+', items: val(apple) },
-        { title: 'Series de Paramount+', items: val(paramount) },
         { title: 'Acción y Aventura', items: val(actionTv) },
         { title: 'Comedia', items: val(comedyTv) },
         { title: 'Ciencia Ficción y Fantasía', items: val(scifiTv) },
@@ -108,7 +70,9 @@ export async function handlePlatforms(req, res) {
   res.json({ platforms })
 }
 
-// Página de una plataforma: películas + series de esa red, paginado.
+// Página de una plataforma: solo series de esa red, paginado.
+// (TMDB no acepta `with_networks` en /discover/movie, así que las películas
+// por red no son fiables; la fila "Top por plataforma" también es series.)
 export async function handlePlataforma(req, res) {
   const { id } = req.params
   const plat = PLATAFORMAS[id]
@@ -119,28 +83,14 @@ export async function handlePlataforma(req, res) {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1)
 
   try {
-    const [tv, movies] = await Promise.allSettled([
-      tmdb.contenidoDeRed(plat.id, page, 'tv'),
-      tmdb.contenidoDeRed(plat.id, page, 'movie'),
-    ])
-
-    const ok = (r) => (r.status === 'fulfilled' ? r.value : { items: [], total_pages: 0 })
-
-    const tvData = ok(tv)
-    const movieData = ok(movies)
-
-    // Intercalar ambos con su media_type
-    const items = [
-      ...movieData.items.map((i) => ({ ...i, media_type: 'movie' })),
-      ...tvData.items.map((i) => ({ ...i, media_type: 'tv' })),
-    ]
+    const data = await tmdb.contenidoDeRed(plat.id, page, 'tv')
 
     res.json({
       key: id,
       ...plat,
       page,
-      items,
-      total_pages: Math.max(tvData.total_pages, movieData.total_pages),
+      items: data.items.map((i) => ({ ...i, media_type: 'tv' })),
+      total_pages: data.total_pages,
     })
   } catch (e) {
     res.status(500).json({ error: e.message })

@@ -9,10 +9,7 @@ async function get(path) {
 }
 
 export const api = {
-  // Filas para el home
-  trending: () => get('/trending'),
-
-  // Home completo (hero + top + redes + géneros)
+  // Home completo (hero + top + géneros)
   home: () => get('/home'),
 
   // Top por plataforma (fila interactiva)

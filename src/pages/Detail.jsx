@@ -29,13 +29,23 @@ export default function Detail({ type }) {
   }, [type, data, id, season])
 
   if (error) return <div className="pt-20 px-6 text-red-400">{error}</div>
-  if (!data) return <div className="pt-20 px-6 text-gray-500">Cargando…</div>
+  if (!data) return <div className="pt-20 px-6 text-dimtext">Cargando…</div>
 
   const title = data.title || data.name
   const year = (data.release_date || data.first_air_date || '').slice(0, 4)
   const backdrop = data.backdrop_path
     ? `${IMG_BASE}${data.backdrop_path}`
     : null
+
+  // En series, "Reproducir" arranca en el primer episodio (S1E1).
+  const firstSeason =
+    type === 'tv'
+      ? data.seasons?.filter((s) => s.season_number > 0)?.[0]?.season_number ?? 1
+      : null
+  const playTo =
+    type === 'movie'
+      ? `/watch/movie/${id}`
+      : `/watch/tv/${id}?season=${firstSeason}&episode=1`
 
   return (
     <div className="pt-16">
@@ -45,16 +55,16 @@ export default function Detail({ type }) {
           className="relative h-[55vh] w-full bg-cover bg-center"
           style={{ backgroundImage: `url(${backdrop})` }}
         >
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/60 to-transparent" />
           <div className="absolute bottom-8 px-6">
-            <h1 className="mb-2 text-4xl font-black">{title}</h1>
-            <p className="mb-3 text-sm text-gray-300">
+            <h1 className="mb-2 font-display text-4xl font-extrabold tracking-tight">{title}</h1>
+            <p className="mb-4 text-sm text-dimtext">
               {year}
               {data.vote_average ? ` · ★ ${data.vote_average.toFixed(1)}` : ''}
             </p>
             <Link
-              to={`/watch/${type}/${id}`}
-              className="rounded bg-netflix px-8 py-2.5 font-semibold hover:bg-red-700"
+              to={playTo}
+              className="rounded-full bg-spectral px-8 py-2.5 font-semibold text-bg transition hover:brightness-110"
             >
               ▶ Reproducir
             </Link>
@@ -63,9 +73,9 @@ export default function Detail({ type }) {
       )}
 
       <div className="px-6 py-6">
-        <p className="max-w-2xl text-gray-300">{data.overview}</p>
+        <p className="max-w-2xl text-[#C7CBD4]">{data.overview}</p>
         {data.genres?.length > 0 && (
-          <p className="mt-4 text-sm text-gray-400">
+          <p className="mt-4 text-sm text-dimtext">
             Géneros: {data.genres.map((g) => g.name).join(', ')}
           </p>
         )}
@@ -80,10 +90,10 @@ export default function Detail({ type }) {
                   <button
                     key={s.season_number}
                     onClick={() => setSeason(s.season_number)}
-                    className={`rounded px-4 py-1.5 text-sm ${
+                    className={`rounded-full border px-4 py-1.5 text-sm transition ${
                       season === s.season_number
-                        ? 'bg-netflix font-semibold'
-                        : 'bg-surface hover:bg-gray-800'
+                        ? 'border-spectral-dim bg-spectral-dim font-semibold text-spectral'
+                        : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
                     }`}
                   >
                     Temporada {s.season_number}
@@ -96,7 +106,7 @@ export default function Detail({ type }) {
                 <Link
                   key={ep.id}
                   to={`/watch/tv/${id}?season=${season}&episode=${ep.episode_number}`}
-                  className="flex items-center gap-3 rounded bg-surface p-3 hover:bg-gray-800"
+                  className="flex items-center gap-3 rounded-[10px] border border-transparent bg-surface p-3 transition hover:border-white/10 hover:bg-surface-2"
                 >
                   {ep.still_path ? (
                     <img
@@ -105,7 +115,7 @@ export default function Detail({ type }) {
                       alt=""
                     />
                   ) : (
-                    <div className="flex h-16 w-28 items-center justify-center rounded bg-gray-800 text-2xl">
+                    <div className="flex h-16 w-28 items-center justify-center rounded bg-surface-2 text-2xl">
                       ▶
                     </div>
                   )}
@@ -113,7 +123,7 @@ export default function Detail({ type }) {
                     <p className="font-semibold">
                       {ep.episode_number}. {ep.name}
                     </p>
-                    <p className="line-clamp-2 text-xs text-gray-400">
+                    <p className="line-clamp-2 text-xs text-dimtext">
                       {ep.overview}
                     </p>
                   </div>

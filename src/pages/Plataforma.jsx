@@ -1,28 +1,16 @@
 import { useEffect, useState } from 'react'
-import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { api } from '../api.js'
 import PosterCard from '../components/PosterCard.jsx'
 
-const FILTROS = [
-  { id: 'todo', label: 'Todo' },
-  { id: 'movie', label: 'Películas' },
-  { id: 'tv', label: 'Series' },
-]
-
-// Página dedicada de una plataforma: películas + series de esa red.
+// Página dedicada de una plataforma: sus series, con paginación.
 export default function Plataforma() {
   const { id } = useParams()
-  const [searchParams] = useSearchParams()
-  const tipoInicial =
-    searchParams.get('tipo') === 'movie' || searchParams.get('tipo') === 'tv'
-      ? searchParams.get('tipo')
-      : 'todo'
 
   const [info, setInfo] = useState(null)
   const [items, setItems] = useState([])
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
-  const [filtro, setFiltro] = useState(tipoInicial)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -55,14 +43,9 @@ export default function Plataforma() {
       .catch(() => {})
   }
 
-  const visible =
-    filtro === 'todo'
-      ? items
-      : items.filter((i) => i.media_type === filtro)
-
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center pt-20 text-gray-500">
+      <div className="flex h-screen items-center justify-center pt-20 text-dimtext">
         Cargando plataforma…
       </div>
     )
@@ -90,39 +73,22 @@ export default function Plataforma() {
           style={{ background: info?.color }}
         />
         <h1 className="font-display text-4xl font-extrabold tracking-tight">
-          {info?.name}
+          Series de {info?.name}
         </h1>
       </div>
 
-      {/* Filtro */}
-      <div className="mb-6 flex gap-2">
-        {FILTROS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFiltro(f.id)}
-            className={`rounded-full border px-4 py-1.5 text-sm transition ${
-              filtro === f.id
-                ? 'border-spectral-dim bg-spectral-dim text-spectral'
-                : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
       {/* Grid */}
-      {visible.length === 0 ? (
-        <p className="text-dimtext">No hay contenido para este filtro.</p>
+      {items.length === 0 ? (
+        <p className="text-dimtext">No hay contenido por ahora.</p>
       ) : (
         <div className="grid grid-cols-3 gap-x-3 gap-y-7 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
-          {visible.map((item) => (
-            <PosterCard key={`${item.media_type}-${item.id}`} item={item} />
+          {items.map((item) => (
+            <PosterCard key={`tv-${item.id}`} item={item} />
           ))}
         </div>
       )}
 
-      {hasMore && filtro === 'todo' && (
+      {hasMore && (
         <div className="mt-10 flex justify-center">
           <button
             onClick={cargarMas}

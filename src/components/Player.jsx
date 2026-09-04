@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 /**
  * Reproductor universal.
@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react'
  */
 export default function Player({ source }) {
   const videoRef = useRef(null)
-  const [hls, setHls] = useState(null)
+  const hlsRef = useRef(null)
 
   // Normaliza: acepta `url` (nueva estructura) o `src` (estructura antigua).
   const src = source?.url || source?.src
@@ -16,8 +16,11 @@ export default function Player({ source }) {
 
   useEffect(() => {
     if (!source) return
-    // Restablece
-    setHls(null)
+    // Restablece la instancia anterior antes de crear una nueva.
+    if (hlsRef.current) {
+      hlsRef.current.destroy()
+      hlsRef.current = null
+    }
     const video = videoRef.current
 
     if (!video) return
@@ -35,7 +38,7 @@ export default function Player({ source }) {
           const h = new Hls()
           h.loadSource(src)
           h.attachMedia(video)
-          setHls(h)
+          hlsRef.current = h
         })
       }
     } else if (!isEmbed && src) {
@@ -44,7 +47,10 @@ export default function Player({ source }) {
     }
 
     return () => {
-      if (hls) hls.destroy()
+      if (hlsRef.current) {
+        hlsRef.current.destroy()
+        hlsRef.current = null
+      }
     }
   }, [source])
 

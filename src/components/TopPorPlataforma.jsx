@@ -85,7 +85,7 @@ export default function TopPorPlataforma() {
           {/* Ver más */}
           {current && (
             <Link
-              to={`/plataforma/${active}?tipo=tv`}
+              to={`/plataforma/${active}`}
               className="inline-flex items-center gap-1.5 rounded-full border border-spectral-dim px-4 py-2 text-[0.85rem] font-semibold text-spectral transition hover:bg-spectral-dim"
             >
               Ver más

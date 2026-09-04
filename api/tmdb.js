@@ -57,19 +57,6 @@ export const tmdb = {
   tvSeason: (id, season) => call(`/tv/${id}/season/${season}`),
   searchMulti: (q) => call('/search/multi', { query: q }),
 
-  trending: async () => {
-    const [movies, tv] = await Promise.all([
-      call('/movie/popular'),
-      call('/tv/popular'),
-    ])
-    return trimList(movies)
-      .map((m) => ({ ...m, media_type: 'movie' }))
-      .concat(trimList(tv).map((s) => ({ ...s, media_type: 'tv' })))
-  },
-
-  trendingMovies: () => call('/movie/popular').then(trimList),
-  trendingTv: () => call('/tv/popular').then(trimList),
-
   // --- Top del día (trending) ---
   topMoviesToday: () => call('/trending/movie/day').then(trimList),
   topTvToday: () => call('/trending/tv/day').then(trimList),
@@ -94,10 +81,6 @@ export const tmdb = {
   // --- Discovering por género ---
   discoverByGenre: (genreId, type = 'tv') =>
     call(`/discover/${type}`, { with_genres: genreId }).then(trimList),
-
-  // --- Riqueza para detalles/slider (incluye backdrop) ---
-  detailMovie: (id) => call(`/movie/${id}`),
-  detailTv: (id) => call(`/tv/${id}`),
 
   // --- Recomendados reales ("También te puede interesar") ---
   // Primero /recommendations (secuelas, misma saga, gustos afines);

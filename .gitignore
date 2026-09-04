@@ -17,6 +17,10 @@ dist/
 # README (lo mantenemos local / no se sube por discreción)
 README.md
 
+# Maquetas del amigo (referencia visual local, no se suben)
+ghoststreamx.html
+reproductor.html
+
 # Editor / SO
 .vscode/
 .idea/
