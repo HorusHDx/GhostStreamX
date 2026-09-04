@@ -5,10 +5,19 @@ export default {
     extend: {
       colors: {
         netflix: '#e50914',
-        background: '#0b0b0b',
-        surface: '#1a1a1a',
+        // Identidad GhostStreamX (diseño del amigo)
+        bg: '#08090C',
+        surface: '#101319',
+        'surface-2': '#171B22',
+        spectral: '#7FE7D4',
+        'spectral-dim': 'rgba(127,231,212,0.35)',
+        violet: '#5B4FE0',
+        'violet-bright': '#7A6FF5',
+        dimtext: '#8890A0',
+        rating: '#E3BE6B',
       },
       fontFamily: {
+        display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
     },

@@ -5,13 +5,14 @@ import Player from '../components/Player.jsx'
 
 const HISTORY_KEY = 'ghoststreamx_history'
 
-function saveProgress(key, seconds) {
+function saveProgress(key, seconds, meta = {}) {
   try {
     const raw = localStorage.getItem(HISTORY_KEY)
     const map = raw ? JSON.parse(raw) : {}
     map[key] = {
       t: Date.now(),
       position: Math.round(seconds),
+      ...meta,
     }
     localStorage.setItem(HISTORY_KEY, JSON.stringify(map))
   } catch {
@@ -29,12 +30,14 @@ export default function Watch({ type }) {
   const [error, setError] = useState('')
   const [sources, setSources] = useState([])
   const [selected, setSelected] = useState(null)
+  const [meta, setMeta] = useState({})
 
   useEffect(() => {
     setLoading(true)
     setError('')
     setSources([])
     setSelected(null)
+    setMeta({})
 
     const p =
       type === 'movie'
@@ -54,6 +57,21 @@ export default function Watch({ type }) {
     })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
+
+    // Obtiene metadata (título/poster) para "Continuar viendo"
+    const metaP =
+      type === 'movie'
+        ? api.movie(id)
+        : api.tv(id)
+    metaP
+      .then((d) =>
+        setMeta({
+          title: d.title || d.name,
+          poster: d.poster_path,
+        })
+      )
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, id, season, episode])
 
   // Agrupa las fuentes por idioma para armar los selects.
@@ -76,7 +94,7 @@ export default function Watch({ type }) {
         ← Volver al detalle
       </Link>
 
-      <ProgressTracker enabled={!!selected} getPosition={() => 0} />
+      <ProgressTracker enabled={!!selected} getPosition={() => 0} meta={meta} />
 
       {loading && (
         <div className="flex aspect-video w-full items-center justify-center bg-black text-gray-500">
@@ -142,7 +160,7 @@ export default function Watch({ type }) {
   )
 }
 
-function ProgressTracker({ enabled, getPosition }) {
+function ProgressTracker({ enabled, getPosition, meta }) {
   const { id } = useParams()
   const [params] = useSearchParams()
   const season = params.get('season') || ''
@@ -152,9 +170,16 @@ function ProgressTracker({ enabled, getPosition }) {
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') return
     const key = `${mediaType}:${id}:${season}:${episode}`
-    saveProgress(key, getPosition())
+    saveProgress(key, getPosition(), {
+      mediaType,
+      id,
+      season,
+      episode,
+      title: meta.title,
+      poster: meta.poster,
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled])
+  }, [enabled, meta.title, meta.poster])
 
   return null
 }

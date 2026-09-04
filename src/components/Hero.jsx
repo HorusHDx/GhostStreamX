@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-const IMG = 'https://image.tmdb.org/t/p/w1280'
-
-// Slider hero estilo cinehax: backdrop, título, sinopsis y "Ver ahora".
+// Slider hero estilo cinehax/diseño del amigo:
+// backdrop a pantalla, tag, título (font-display), meta, descripción,
+// botones Reproducir / Más información, y dots verticales a la derecha.
 export default function Hero({ items }) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
-
   const list = (items || []).slice(0, 10)
 
   useEffect(() => {
@@ -23,109 +22,129 @@ export default function Hero({ items }) {
 
   if (list.length === 0) return null
 
-  const go = (dir) =>
-    setIndex((i) => (i + dir + list.length) % list.length)
+  const item = list[index]
+  const isMovie = item.media_type === 'movie' || item.title
+  const type = isMovie ? 'movie' : 'tv'
+  const pct = Math.min(99, Math.round(((item.vote_average || 0) / 10) * 100))
+  const year = (item.release_date || item.first_air_date || '').slice(0, 4)
 
   return (
-    <div
-      className="relative h-[60vh] min-h-[380px] w-full overflow-hidden bg-black md:h-[75vh]"
+    <section
+      className="relative h-[92vh] max-h-[820px] min-h-[560px] w-full overflow-hidden"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* Slides */}
-      {list.map((item, i) => {
-        const isMovie = item.media_type === 'movie' || item.title
-        const type = isMovie ? 'movie' : 'tv'
-        return (
-          <div
-            key={`${type}-${item.id}`}
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              i === index ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            {item.backdrop_path ? (
-              <img
-                src={item.backdrop_path}
-                alt={item.title || item.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="h-full w-full bg-gray-900" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
-          </div>
-        )
-      })}
+      {/* Bg del slide activo */}
+      {list.map((it, i) => (
+        <div
+          key={`${it.media_type}-${it.id}`}
+          className={`absolute inset-0 transition-opacity duration-1000 ${
+            i === index ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ pointerEvents: i === index ? 'auto' : 'none' }}
+        >
+          {it.backdrop_path ? (
+            <img
+              src={it.backdrop_path}
+              alt={it.title || it.name}
+              className="h-full w-full object-cover"
+              loading={i === 0 ? 'eager' : 'lazy'}
+            />
+          ) : (
+            <div className="h-full w-full bg-[#101319]" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#08090c] via-[rgba(8,9,12,0.45)] to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[rgba(8,9,12,0.8)] via-[rgba(8,9,12,0.2)] to-transparent" />
+        </div>
+      ))}
 
-      {/* Contenido del slide activo */}
-      <div className="absolute inset-x-0 bottom-0 z-10 flex items-end px-6 pb-16 md:px-14">
-        {list[index] && (
-          <div className="max-w-xl">
-            <span className="mb-2 inline-block rounded bg-red-600 px-2 py-0.5 text-xs font-bold uppercase tracking-wide">
-              {list[index].media_type === 'movie' || list[index].title
-                ? 'Película'
-                : 'Serie'}
-            </span>
-            <h2 className="mb-2 text-3xl font-black leading-tight drop-shadow-lg md:text-5xl">
-              {list[index].title || list[index].name}
-            </h2>
-            <p className="mb-4 line-clamp-2 max-w-lg text-sm text-gray-200 md:text-base">
-              {list[index].overview}
-            </p>
-            <div className="flex items-center gap-3">
-              <Link
-                to={`/${
-                  list[index].media_type === 'movie' || list[index].title
-                    ? 'movie'
-                    : 'tv'
-                }/${list[index].id}`}
-                className="rounded bg-red-600 px-5 py-2 font-semibold text-white transition hover:bg-red-700"
-              >
-                Ver ahora
-              </Link>
-              <div className="flex items-center gap-1">
-                <span className="text-yellow-400">★</span>
-                <span className="text-sm font-semibold">
-                  {(list[index].vote_average || 0).toFixed(1)}
-                </span>
-              </div>
-            </div>
-          </div>
+      {/* Contenido */}
+      <div className="absolute left-5 right-5 bottom-24 z-10 max-w-[560px] md:left-12 md:right-auto md:bottom-28">
+        <div className="mb-4 flex items-center gap-2 text-[0.85rem] font-semibold tracking-wide text-spectral">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
+            <path d="M12 2l1.6 5.9L19.5 8l-4.6 3.6L16.5 18 12 14.6 7.5 18l1.6-6.4L4.5 8l5.9-.1z" />
+          </svg>
+          {item.title || item.name}
+        </div>
+
+        <h1 className="mb-4 font-display text-[clamp(2.2rem,5vw,4rem)] font-extrabold leading-[1.02] tracking-tight drop-shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+          {item.title || item.name}
+        </h1>
+
+        <div className="mb-4 flex items-center gap-3.5 text-[0.9rem] text-dimtext">
+          <span className="font-semibold text-spectral">{pct}% para ti</span>
+          <span className="h-[3px] w-[3px] rounded-full bg-dimtext" />
+          {year && <span>{year}</span>}
+          {isMovie ? (
+            <>
+              <span className="h-[3px] w-[3px] rounded-full bg-dimtext" />
+              <span>Película</span>
+            </>
+          ) : (
+            <>
+              <span className="h-[3px] w-[3px] rounded-full bg-dimtext" />
+              <span>Serie</span>
+            </>
+          )}
+          <span className="h-[3px] w-[3px] rounded-full bg-dimtext" />
+          <span className="flex items-center gap-1 text-rating">
+            ★ {item.vote_average?.toFixed(1)}
+          </span>
+        </div>
+
+        {item.overview && (
+          <p className="mb-6 max-w-[500px] text-base leading-relaxed text-[#C7CBD4] line-clamp-3">
+            {item.overview}
+          </p>
         )}
+
+        <div className="flex gap-3.5">
+          <Link
+            to={`/watch/${type}/${item.id}`}
+            className="inline-flex items-center gap-2.5 rounded-lg bg-[#E9ECF1] px-6 py-3 text-[0.95rem] font-semibold text-[#08090C] transition hover:bg-white hover:shadow-[0_0_24px_rgba(233,236,241,0.25)] active:scale-[0.97]"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            Reproducir
+          </Link>
+          <Link
+            to={`/${type}/${item.id}`}
+            className="inline-flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/10 px-6 py-3 text-[0.95rem] font-semibold transition hover:border-spectral-dim hover:bg-white/10 active:scale-[0.97]"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-5M12 8h.01" />
+            </svg>
+            Más información
+          </Link>
+        </div>
       </div>
 
-      {/* Controles */}
+      {/* Dots verticales a la derecha */}
       {list.length > 1 && (
-        <>
-          <button
-            onClick={() => go(-1)}
-            aria-label="Anterior"
-            className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white opacity-0 transition hover:bg-red-600 group-hover:opacity-100 md:opacity-40 md:hover:opacity-100"
-          >
-            ‹
-          </button>
-          <button
-            onClick={() => go(1)}
-            aria-label="Siguiente"
-            className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white opacity-0 transition hover:bg-red-600 md:opacity-40 md:hover:opacity-100"
-          >
-            ›
-          </button>
-          <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center gap-1.5">
-            {list.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setIndex(i)}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === index ? 'w-5 bg-red-600' : 'w-2.5 bg-white/40'
-                }`}
-                aria-label={`Ir a slide ${i + 1}`}
-              />
-            ))}
-          </div>
-        </>
+        <div className="absolute bottom-28 right-4 z-20 hidden flex-col gap-3 md:right-12 md:flex">
+          {list.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIndex(i)}
+              aria-label={`Ir a slide ${i + 1}`}
+              className={`rounded transition-all duration-300 ${
+                i === index
+                  ? 'h-[26px] w-2 rounded bg-spectral shadow-[0_0_10px_rgba(127,231,212,0.35)]'
+                  : 'h-2 w-2 rounded-full bg-white/25 hover:bg-white/50'
+              }`}
+            />
+          ))}
+        </div>
       )}
-    </div>
+    </section>
   )
 }

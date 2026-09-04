@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import Hero from '../components/Hero.jsx'
+import ContinuarViendo from '../components/ContinuarViendo.jsx'
 import TopRow from '../components/TopRow.jsx'
+import TopPorPlataforma from '../components/TopPorPlataforma.jsx'
 import Row from '../components/Row.jsx'
 
 export default function Home() {
@@ -17,8 +19,8 @@ export default function Home() {
 
   if (error) {
     return (
-      <div className="pt-24">
-        <p className="px-6 text-red-400">
+      <div className="px-6 pt-28">
+        <p className="text-red-400">
           Error al cargar. Asegúrate de que el backend esté corriendo: {error}
         </p>
       </div>
@@ -33,24 +35,30 @@ export default function Home() {
     )
   }
 
-  const sections = data.sections || []
+  const rows = (data.sections || []).filter((s) => !s.title.startsWith('Series de'))
 
   return (
-    <div className="pb-16">
+    <div className="pb-20">
       <Hero items={data.hero} />
 
-      {sections.map((row) =>
-        row.top ? (
-          <TopRow
-            key={row.title}
-            title={row.title}
-            items={row.items}
-            type={row.type}
-          />
-        ) : (
-          <Row key={row.title} title={row.title} items={row.items} />
-        )
-      )}
+      <div className="relative z-10 -mt-16">
+        <ContinuarViendo />
+
+        {rows.map((row) =>
+          row.top ? (
+            <TopRow
+              key={row.title}
+              title={row.title}
+              items={row.items}
+              type={row.type}
+            />
+          ) : (
+            <Row key={row.title} title={row.title} items={row.items} />
+          )
+        )}
+
+        <TopPorPlataforma />
+      </div>
     </div>
   )
 }

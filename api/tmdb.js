@@ -46,6 +46,7 @@ function trimList(obj, itemsKey = 'results') {
     poster_path: it.poster_path ? `${IMG}/w500${it.poster_path}` : null,
     backdrop_path: it.backdrop_path ? `${IMG}/w1280${it.backdrop_path}` : null,
     vote_average: it.vote_average,
+    popularity: it.popularity || 0,
     overview: it.overview || '',
   }))
 }

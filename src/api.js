@@ -15,6 +15,9 @@ export const api = {
   // Home completo (hero + top + redes + géneros)
   home: () => get('/home'),
 
+  // Top por plataforma (fila interactiva)
+  platforms: () => get('/platforms'),
+
   // Búsqueda (películas + series)
   search: (q) => get(`/search?q=${encodeURIComponent(q)}`),
 

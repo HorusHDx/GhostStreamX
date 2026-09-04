@@ -83,6 +83,31 @@ export async function handleHome(req, res) {
   }
 }
 
+// Top por plataforma (para la fila interactiva del home)
+export async function handlePlatforms(req, res) {
+  const entry = (networkId, name, color) =>
+    tmdb.discoverByNetwork(networkId).then((items) => ({ name, color, items }))
+
+  const results = await Promise.allSettled([
+    entry(213, 'Netflix', '#C24A4A'),
+    entry(1024, 'Prime Video', '#4FA3D1'),
+    entry(49, 'HBO', '#8A6FD6'),
+    entry(2739, 'Disney+', '#4C6FD0'),
+    entry(2552, 'Apple TV+', '#C7CBD4'),
+    entry(158, 'Paramount+', '#5BA8D6'),
+  ])
+
+  const platforms = {}
+  const ids = ['netflix', 'prime', 'hbo', 'disney', 'apple', 'paramount']
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      platforms[ids[i]] = { ...r.value }
+    }
+  })
+
+  res.json({ platforms })
+}
+
 // Búsqueda multi (películas + series)
 export async function handleSearch(req, res) {
   try {
