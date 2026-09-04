@@ -11,6 +11,10 @@ export default function Player({ source }) {
   const videoRef = useRef(null)
   const [hls, setHls] = useState(null)
 
+  // Normaliza: acepta `url` (nueva estructura) o `src` (estructura antigua).
+  const src = source?.url || source?.src
+  const kind = source?.kind === 'direct' && src?.includes('.m3u8') ? 'direct' : source?.kind
+
   useEffect(() => {
     if (!source) return
     // Restablece
@@ -19,20 +23,20 @@ export default function Player({ source }) {
 
     if (!video) return
 
-    const isM3u8 = source.src?.includes('.m3u8')
-    const isEmbed = source.kind === 'embed' || source.src?.startsWith('http') === false
+    const isM3u8 = src?.includes('.m3u8')
+    const isEmbed = kind === 'embed' || (src && src.startsWith('http') === false)
 
     if (isM3u8) {
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = source.src // Safari
+        video.src = src // Safari
       } else if (Hls.isSupported()) {
         const h = new Hls()
-        h.loadSource(source.src)
+        h.loadSource(src)
         h.attachMedia(video)
         setHls(h)
       }
-    } else if (!isEmbed && source.src) {
-      video.src = source.src
+    } else if (!isEmbed && src) {
+      video.src = src
       video.load()
     }
 
@@ -49,12 +53,12 @@ export default function Player({ source }) {
     )
   }
 
-  // Embeds (UnlimPlay / nsrplay player HTML)
-  if (source.kind === 'embed' && !source.src?.includes('.m3u8')) {
+  // Embeds (iframe)
+  if (kind === 'embed' && !src?.includes('.m3u8')) {
     return (
       <div className="relative aspect-video w-full overflow-hidden bg-black">
         <iframe
-          src={source.src}
+          src={src}
           className="absolute inset-0 h-full w-full"
           allowFullScreen
           allow="autoplay; fullscreen; picture-in-picture"

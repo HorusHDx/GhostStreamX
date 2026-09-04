@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { api } from '../api.js'
 import Player from '../components/Player.jsx'
@@ -25,14 +25,17 @@ export default function Watch({ type }) {
   const season = params.get('season') || ''
   const episode = params.get('episode') || ''
 
-  const [source, setSource] = useState(null)
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [sources, setSources] = useState([])
+  const [selected, setSelected] = useState(null)
 
   useEffect(() => {
     setLoading(true)
-    setSource(null)
     setError('')
+    setSources([])
+    setSelected(null)
+
     const p =
       type === 'movie'
         ? api.watchMovie(id)
@@ -41,13 +44,28 @@ export default function Watch({ type }) {
           : Promise.resolve({ sources: [], message: 'Faltan temporada/episodio' })
 
     p.then((data) => {
-      const s = pickSource(data)
-      setSource(s ? { kind: s.kind, src: s.url || s.embed } : null)
-      if (!s) setError(data.message || 'No se encontró una fuente disponible.')
+      const list = data.sources || []
+      if (list.length === 0) {
+        setError(data.message || 'No se encontró una fuente disponible.')
+        return
+      }
+      setSources(list)
+      setSelected(list[0])
     })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [type, id, season, episode])
+
+  // Agrupa las fuentes por idioma para armar los selects.
+  const byLanguage = useMemo(() => {
+    const map = new Map()
+    for (const s of sources) {
+      const key = s.language || 'server'
+      if (!map.has(key)) map.set(key, [])
+      map.get(key).push(s)
+    }
+    return map
+  }, [sources])
 
   return (
     <div className="pt-20 px-6">
@@ -58,15 +76,11 @@ export default function Watch({ type }) {
         ← Volver al detalle
       </Link>
 
-      {/* Guardar un "continuar viendo" aproximado (al entrar) */}
-      <ProgressTracker
-        enabled={!!source}
-        getPosition={() => 0}
-      />
+      <ProgressTracker enabled={!!selected} getPosition={() => 0} />
 
       {loading && (
         <div className="flex aspect-video w-full items-center justify-center bg-black text-gray-500">
-          Resolviendo fuente…
+          Resolviendo fuentes…
         </div>
       )}
 
@@ -76,7 +90,7 @@ export default function Watch({ type }) {
         </div>
       )}
 
-      {!loading && !error && source && (
+      {!loading && !error && selected && (
         <div className="mx-auto max-w-5xl">
           <h1 className="mb-4 text-xl font-semibold">
             Reproduciendo
@@ -84,20 +98,50 @@ export default function Watch({ type }) {
               ? ` · Temporada ${season} - Episodio ${episode}`
               : ''}
           </h1>
-          <Player source={source} />
+
+          {/* Selector de servidor */}
+          <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+            <select
+              value={selected?.language || ''}
+              onChange={(e) => {
+                const group = byLanguage.get(e.target.value)
+                if (group && group.length > 0) setSelected(group[0])
+              }}
+              className="rounded border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-200 outline-none focus:border-red-600"
+            >
+              {[...byLanguage.keys()].map((lang) => (
+                <option key={lang} value={lang}>
+                  {lang === 'server' ? 'Servidores' : lang}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={selected?.url || ''}
+              onChange={(e) => {
+                const s = sources.find((x) => x.url === e.target.value)
+                if (s) setSelected(s)
+              }}
+              className="rounded border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-200 outline-none focus:border-red-600"
+            >
+              {(byLanguage.get(selected?.language) || []).map((s) => (
+                <option key={s.url} value={s.url}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-gray-500">
+              {selected.label || selected.name}
+            </span>
+          </div>
+
+          <Player source={selected} />
         </div>
       )}
     </div>
   )
 }
 
-// Elige la primera fuente disponible del backend (ya ordenada por prioridad).
-function pickSource(data) {
-  if (!data || !data.sources || data.sources.length === 0) return null
-  return data.sources[0]
-}
-
-// Registra en historial cuando el usuario mira algo.
 function ProgressTracker({ enabled, getPosition }) {
   const { id } = useParams()
   const [params] = useSearchParams()
