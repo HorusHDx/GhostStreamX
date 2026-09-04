@@ -80,6 +80,19 @@ export const tmdb = {
   discoverByNetwork: (networkId) =>
     call('/discover/tv', { with_networks: networkId }).then(trimList),
 
+  // --- Contenido completo de una red (películas + series), paginado ---
+  async contenidoDeRed(networkId, page = 1, type = 'tv') {
+    const data = await call(`/discover/${type}`, {
+      with_networks: networkId,
+      page,
+    })
+    return {
+      items: trimList(data),
+      page: data.page,
+      total_pages: data.total_pages,
+    }
+  },
+
   // --- Discovering por género ---
   discoverByGenre: (genreId, type = 'tv') =>
     call(`/discover/${type}`, { with_genres: genreId }).then(trimList),

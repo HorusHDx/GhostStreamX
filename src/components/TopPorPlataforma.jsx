@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom'
 import { api } from '../api.js'
 
 const IMG = 'https://image.tmdb.org/t/p/w500'
-const ORDER = ['netflix', 'hbo', 'prime', 'disney', 'apple', 'paramount']
+const ORDER = ['netflix', 'prime', 'hbo', 'disney', 'apple', 'paramount']
 
-// Fila interactiva "Top por plataforma" con tabs de red y modo
-// "Más vistas" / "Mejor calificadas" (estilo del diseño del amigo).
+// Fila interactiva "Top por plataforma" con tabs de red, modo
+// "Más vistas"/"Mejor calificadas" y botón "Ver más" a la página de la plataforma.
 export default function TopPorPlataforma() {
   const [platforms, setPlatforms] = useState(null)
   const [active, setActive] = useState('netflix')
@@ -32,15 +32,6 @@ export default function TopPorPlataforma() {
     )
   }
 
-  const labels = {
-    netflix: { name: 'Netflix', color: '#C24A4A' },
-    prime: { name: 'Prime Video', color: '#4FA3D1' },
-    hbo: { name: 'HBO Max', color: '#8A6FD6' },
-    disney: { name: 'Disney+', color: '#4C6FD0' },
-    apple: { name: 'Apple TV+', color: '#C7CBD4' },
-    paramount: { name: 'Paramount+', color: '#5BA8D6' },
-  }
-
   const current = platforms[active]
   const items = (current?.items || [])
     .slice()
@@ -49,14 +40,14 @@ export default function TopPorPlataforma() {
         ? (b.vote_average || 0) - (a.vote_average || 0)
         : (b.popularity || 0) - (a.popularity || 0)
     )
-    .slice(0, 6)
+    .slice(0, 10)
 
   return (
     <section className="relative z-10 mb-12">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-4 px-5 md:px-12">
         <h2 className="font-display text-2xl font-bold">Top por plataforma</h2>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           {/* Toggle modo */}
           <div className="flex gap-1 rounded-[20px] border border-white/10 bg-white/5 p-1">
             {[
@@ -76,6 +67,19 @@ export default function TopPorPlataforma() {
               </button>
             ))}
           </div>
+
+          {/* Ver más */}
+          {current && (
+            <Link
+              to={`/plataforma/${active}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-spectral-dim px-4 py-2 text-[0.85rem] font-semibold text-spectral transition hover:bg-spectral-dim"
+            >
+              Ver más
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M7 17 17 7M9 7h8v8" />
+              </svg>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -93,7 +97,7 @@ export default function TopPorPlataforma() {
               className="h-2 w-2 shrink-0 rounded-full"
               style={{ background: platforms[k].color }}
             />
-            {labels[k]?.name}
+            {platforms[k].name}
             {active === k && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-spectral shadow-[0_0_8px_rgba(127,231,212,0.35)]" />
             )}

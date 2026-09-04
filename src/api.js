@@ -18,6 +18,9 @@ export const api = {
   // Top por plataforma (fila interactiva)
   platforms: () => get('/platforms'),
 
+  // Contenido completo de una plataforma (página dedicada)
+  plataforma: (key, page = 1) => get(`/plataforma/${key}?page=${page}`),
+
   // Búsqueda (películas + series)
   search: (q) => get(`/search?q=${encodeURIComponent(q)}`),
 

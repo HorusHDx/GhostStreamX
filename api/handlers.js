@@ -1,6 +1,7 @@
 // Handlers de la API (funciones puras, reutilizables en Express y serverless).
 import { tmdb } from './tmdb.js'
 import { resolveSources } from './sources.js'
+import { PLATAFORMAS } from './plataformas.js'
 
 // Home: varias filas de contenido
 export async function handleTrending(req, res) {
@@ -88,24 +89,57 @@ export async function handlePlatforms(req, res) {
   const entry = (networkId, name, color) =>
     tmdb.discoverByNetwork(networkId).then((items) => ({ name, color, items }))
 
-  const results = await Promise.allSettled([
-    entry(213, 'Netflix', '#C24A4A'),
-    entry(1024, 'Prime Video', '#4FA3D1'),
-    entry(49, 'HBO', '#8A6FD6'),
-    entry(2739, 'Disney+', '#4C6FD0'),
-    entry(2552, 'Apple TV+', '#C7CBD4'),
-    entry(158, 'Paramount+', '#5BA8D6'),
-  ])
+  const results = await Promise.allSettled(
+    Object.values(PLATAFORMAS).map((p) => entry(p.id, p.name, p.color))
+  )
 
   const platforms = {}
-  const ids = ['netflix', 'prime', 'hbo', 'disney', 'apple', 'paramount']
-  results.forEach((r, i) => {
-    if (r.status === 'fulfilled') {
-      platforms[ids[i]] = { ...r.value }
+  Object.keys(PLATAFORMAS).forEach((id, i) => {
+    if (results[i].status === 'fulfilled') {
+      platforms[id] = { ...results[i].value, networkId: PLATAFORMAS[id].id }
     }
   })
 
   res.json({ platforms })
+}
+
+// Página de una plataforma: películas + series de esa red, paginado.
+export async function handlePlataforma(req, res) {
+  const { id } = req.params
+  const plat = PLATAFORMAS[id]
+  if (!plat) {
+    return res.status(404).json({ error: 'Plataforma desconocida' })
+  }
+
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+
+  try {
+    const [tv, movies] = await Promise.allSettled([
+      tmdb.contenidoDeRed(plat.id, page, 'tv'),
+      tmdb.contenidoDeRed(plat.id, page, 'movie'),
+    ])
+
+    const ok = (r) => (r.status === 'fulfilled' ? r.value : { items: [], total_pages: 0 })
+
+    const tvData = ok(tv)
+    const movieData = ok(movies)
+
+    // Intercalar ambos con su media_type
+    const items = [
+      ...movieData.items.map((i) => ({ ...i, media_type: 'movie' })),
+      ...tvData.items.map((i) => ({ ...i, media_type: 'tv' })),
+    ]
+
+    res.json({
+      key: id,
+      ...plat,
+      page,
+      items,
+      total_pages: Math.max(tvData.total_pages, movieData.total_pages),
+    })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
 }
 
 // Búsqueda multi (películas + series)

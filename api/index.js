@@ -14,6 +14,7 @@ import {
   handleTrending,
   handleHome,
   handlePlatforms,
+  handlePlataforma,
   handleSearch,
   handleMovie,
   handleTv,
@@ -34,6 +35,7 @@ const api = express.Router()
 api.get('/trending', handleTrending)
 api.get('/home', handleHome)
 api.get('/platforms', handlePlatforms)
+api.get('/plataforma/:id', handlePlataforma)
 api.get('/search', handleSearch)
 api.get('/movie/:id', handleMovie)
 api.get('/tv/:id', handleTv)
