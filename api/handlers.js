@@ -35,6 +35,9 @@ export async function handleHome(req, res) {
       netflix,
       prime,
       hbo,
+      disney,
+      apple,
+      paramount,
       actionTv,
       comedyTv,
       scifiTv,
@@ -45,7 +48,10 @@ export async function handleHome(req, res) {
       tmdb.topTvToday(),                      // top series hoy
       tmdb.discoverByNetwork(213),            // Netflix
       tmdb.discoverByNetwork(1024),           // Prime Video
-      tmdb.discoverByNetwork(49),             // HBO
+      tmdb.discoverByNetwork(49),             // HBO / Max
+      tmdb.discoverByNetwork(2739),           // Disney+
+      tmdb.discoverByNetwork(2552),           // Apple TV+
+      tmdb.discoverByNetwork(158),            // Paramount+
       tmdb.discoverByGenre(10759, 'tv'),      // acción y aventura
       tmdb.discoverByGenre(35, 'tv'),         // comedia
       tmdb.discoverByGenre(10765, 'tv'),      // ciencia ficción y fantasía
@@ -62,7 +68,10 @@ export async function handleHome(req, res) {
         { title: 'Top series hoy', items: val(topTv), top: true, type: 'tv' },
         { title: 'Series de Netflix', items: val(netflix) },
         { title: 'Series de Prime Video', items: val(prime) },
-        { title: 'Series de HBO', items: val(hbo) },
+        { title: 'Series de HBO y Max', items: val(hbo) },
+        { title: 'Series de Disney+', items: val(disney) },
+        { title: 'Series de Apple TV+', items: val(apple) },
+        { title: 'Series de Paramount+', items: val(paramount) },
         { title: 'Acción y Aventura', items: val(actionTv) },
         { title: 'Comedia', items: val(comedyTv) },
         { title: 'Ciencia Ficción y Fantasía', items: val(scifiTv) },
