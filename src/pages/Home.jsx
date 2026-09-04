@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { api } from '../api.js'
 import Hero from '../components/Hero.jsx'
 import ContinuarViendo from '../components/ContinuarViendo.jsx'
@@ -9,6 +10,7 @@ import Row from '../components/Row.jsx'
 export default function Home() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
+  const location = useLocation()
 
   useEffect(() => {
     api
@@ -16,6 +18,15 @@ export default function Home() {
       .then((d) => setData(d))
       .catch((e) => setError(e.message))
   }, [])
+
+  // Navegación por anclas del menú (/#top-peliculas, /#top-series, /#generos).
+  useEffect(() => {
+    if (!location.hash || !data) return
+    const t = setTimeout(() => {
+      document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 60)
+    return () => clearTimeout(t)
+  }, [location.hash, data])
 
   if (error) {
     return (
@@ -36,6 +47,8 @@ export default function Home() {
   }
 
   const rows = data.sections || []
+  const topRows = rows.filter((r) => r.top)
+  const genreRows = rows.filter((r) => !r.top)
 
   return (
     <div className="pb-20">
@@ -46,18 +59,21 @@ export default function Home() {
 
         <TopPorPlataforma />
 
-        {rows.map((row) =>
-          row.top ? (
-            <TopRow
-              key={row.title}
-              title={row.title}
-              items={row.items}
-              type={row.type}
-            />
-          ) : (
+        {topRows.map((row) => (
+          <TopRow
+            key={row.title}
+            id={row.type === 'movie' ? 'top-peliculas' : 'top-series'}
+            title={row.title}
+            items={row.items}
+            type={row.type}
+          />
+        ))}
+
+        <div id="generos" className="scroll-mt-20">
+          {genreRows.map((row) => (
             <Row key={row.title} title={row.title} items={row.items} />
-          )
-        )}
+          ))}
+        </div>
       </div>
     </div>
   )

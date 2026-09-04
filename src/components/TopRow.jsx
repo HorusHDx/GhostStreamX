@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 const IMG = 'https://image.tmdb.org/t/p/w500'
 
 // Fila "Top N" con numerales outline (estilo del amigo).
-export default function TopRow({ title, items, type }) {
+export default function TopRow({ title, items, type, id }) {
   const ref = useRef(null)
   if (!items || items.length === 0) return null
   const list = items.slice(0, 10)
@@ -13,7 +13,7 @@ export default function TopRow({ title, items, type }) {
     ref.current?.scrollBy({ left: dir * 420, behavior: 'smooth' })
 
   return (
-    <section className="relative z-10 mb-12">
+    <section id={id} className="relative z-10 mb-12 scroll-mt-24">
       <div className="mb-4 flex items-baseline justify-between px-5 md:px-12">
         <h2 className="font-display text-2xl font-bold tracking-tight md:text-[1.4rem]">
           {title}

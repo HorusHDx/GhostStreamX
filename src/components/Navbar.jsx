@@ -1,11 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Logo from './Logo.jsx'
+
+const MENU = [
+  { label: 'Inicio', to: '/', scrollTop: true },
+  { label: 'Series', to: { pathname: '/', hash: '#top-series' } },
+  { label: 'Películas', to: { pathname: '/', hash: '#top-peliculas' } },
+  { label: 'Géneros', to: { pathname: '/', hash: '#generos' } },
+]
 
 export default function Navbar() {
   const [q, setQ] = useState('')
   const [scrolled, setScrolled] = useState(false)
+  const [open, setOpen] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -14,10 +23,17 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  // Cierra el menú móvil al navegar.
+  useEffect(() => {
+    setOpen(false)
+  }, [location.pathname, location.hash])
+
   function submit(e) {
     e.preventDefault()
     if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`)
   }
+
+  const goTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 
   return (
     <header
@@ -30,18 +46,16 @@ export default function Navbar() {
       <Logo />
 
       <nav className="hidden items-center gap-9 text-[0.94rem] text-dimtext md:flex">
-        <Link to="/" className="relative py-1.5 transition hover:text-white">
-          Inicio
-        </Link>
-        <Link to="/" className="relative py-1.5 transition hover:text-white">
-          Series
-        </Link>
-        <Link to="/" className="relative py-1.5 transition hover:text-white">
-          Películas
-        </Link>
-        <Link to="/" className="relative py-1.5 transition hover:text-white">
-          Géneros
-        </Link>
+        {MENU.map((m) => (
+          <Link
+            key={m.label}
+            to={m.to}
+            onClick={m.scrollTop ? goTop : undefined}
+            className="relative py-1.5 transition hover:text-white"
+          >
+            {m.label}
+          </Link>
+        ))}
       </nav>
 
       <form
@@ -67,6 +81,40 @@ export default function Navbar() {
           className="w-full bg-transparent text-white outline-none placeholder:text-dimtext"
         />
       </form>
+
+      {/* Botón hamburguesa (solo móvil) */}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
+        aria-expanded={open}
+        className="ml-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10 md:hidden"
+      >
+        {open ? (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        )}
+      </button>
+
+      {/* Panel desplegable (solo móvil) */}
+      {open && (
+        <nav className="absolute inset-x-0 top-full flex flex-col border-b border-white/10 bg-[#08090c]/95 px-5 pb-2 pt-1 backdrop-blur-2xl md:hidden">
+          {MENU.map((m) => (
+            <Link
+              key={m.label}
+              to={m.to}
+              onClick={m.scrollTop ? goTop : undefined}
+              className="border-b border-white/5 py-3 text-[0.95rem] text-dimtext transition last:border-0 hover:text-white"
+            >
+              {m.label}
+            </Link>
+          ))}
+        </nav>
+      )}
     </header>
   )
 }
