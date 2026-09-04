@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { api } from '../api.js'
 import PosterCard from '../components/PosterCard.jsx'
 
@@ -12,11 +12,17 @@ const FILTROS = [
 // Página dedicada de una plataforma: películas + series de esa red.
 export default function Plataforma() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const tipoInicial =
+    searchParams.get('tipo') === 'movie' || searchParams.get('tipo') === 'tv'
+      ? searchParams.get('tipo')
+      : 'todo'
+
   const [info, setInfo] = useState(null)
   const [items, setItems] = useState([])
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
-  const [filtro, setFiltro] = useState('todo')
+  const [filtro, setFiltro] = useState(tipoInicial)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 

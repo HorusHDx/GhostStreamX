@@ -5,11 +5,12 @@ import { api } from '../api.js'
 const IMG = 'https://image.tmdb.org/t/p/w500'
 const ORDER = ['netflix', 'prime', 'hbo', 'disney', 'apple', 'paramount']
 
-// Fila interactiva "Top por plataforma" con tabs de red, modo
-// "Más vistas"/"Mejor calificadas" y botón "Ver más" a la página de la plataforma.
+// Fila interactiva "Top por plataforma" con tabs de red, toggle Serie/Película,
+// modo "Más vistas"/"Mejor calificadas" y botón "Ver más".
 export default function TopPorPlataforma() {
   const [platforms, setPlatforms] = useState(null)
   const [active, setActive] = useState('netflix')
+  const [tipo, setTipo] = useState('series') // 'series' | 'peliculas'
   const [mode, setMode] = useState('vistas')
 
   useEffect(() => {
@@ -33,7 +34,8 @@ export default function TopPorPlataforma() {
   }
 
   const current = platforms[active]
-  const items = (current?.items || [])
+  const pool = tipo === 'series' ? current?.items || [] : current?.movies || []
+  const items = pool
     .slice()
     .sort((a, b) =>
       mode === 'calificacion'
@@ -42,12 +44,39 @@ export default function TopPorPlataforma() {
     )
     .slice(0, 10)
 
+  const verMasTipo =
+    tipo === 'peliculas'
+      ? '?tipo=movie'
+      : tipo === 'series'
+        ? '?tipo=tv'
+        : ''
+
   return (
     <section className="relative z-10 mb-12">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-4 px-5 md:px-12">
         <h2 className="font-display text-2xl font-bold">Top por plataforma</h2>
 
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Toggle Serie/Película */}
+          <div className="flex gap-1 rounded-[20px] border border-white/10 bg-white/5 p-1">
+            {[
+              { id: 'series', label: 'Series' },
+              { id: 'peliculas', label: 'Películas' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTipo(t.id)}
+                className={`rounded-[16px] px-4 py-1.5 text-[0.85rem] transition ${
+                  tipo === t.id
+                    ? 'bg-spectral-dim text-spectral'
+                    : 'text-dimtext hover:text-white'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           {/* Toggle modo */}
           <div className="flex gap-1 rounded-[20px] border border-white/10 bg-white/5 p-1">
             {[
@@ -71,7 +100,7 @@ export default function TopPorPlataforma() {
           {/* Ver más */}
           {current && (
             <Link
-              to={`/plataforma/${active}`}
+              to={`/plataforma/${active}${verMasTipo}`}
               className="inline-flex items-center gap-1.5 rounded-full border border-spectral-dim px-4 py-2 text-[0.85rem] font-semibold text-spectral transition hover:bg-spectral-dim"
             >
               Ver más
@@ -112,7 +141,7 @@ export default function TopPorPlataforma() {
           const poster = item.poster_path ? `${IMG}${item.poster_path}` : null
           return (
             <Link
-              key={`${active}-${item.id}`}
+              key={`${active}-${mediaType}-${item.id}`}
               to={`/${mediaType}/${item.id}`}
               className="group flex shrink-0 items-end"
             >

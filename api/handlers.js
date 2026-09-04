@@ -85,9 +85,21 @@ export async function handleHome(req, res) {
 }
 
 // Top por plataforma (para la fila interactiva del home)
+// Devuelve, por cada red, sus series (items) y películas (movies).
 export async function handlePlatforms(req, res) {
   const entry = (networkId, name, color) =>
-    tmdb.discoverByNetwork(networkId).then((items) => ({ name, color, items }))
+    Promise.allSettled([
+      tmdb.discoverByNetwork(networkId),                 // series
+      tmdb.contenidoDeRed(networkId, 1, 'movie').then((r) => r.items), // películas
+    ]).then(([tv, movies]) => ({
+      name,
+      color,
+      items: tv.status === 'fulfilled' ? tv.value : [],          // series
+      movies:
+        movies.status === 'fulfilled'
+          ? movies.value.map((m) => ({ ...m, media_type: 'movie' }))
+          : [],                                                  // películas
+    }))
 
   const results = await Promise.allSettled(
     Object.values(PLATAFORMAS).map((p) => entry(p.id, p.name, p.color))
