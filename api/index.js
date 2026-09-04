@@ -24,16 +24,24 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-// Rutas de la API
-app.get('/api/trending', handleTrending)
-app.get('/api/search', handleSearch)
-app.get('/api/movie/:id', handleMovie)
-app.get('/api/tv/:id', handleTv)
-app.get('/api/tv/:id/season/:season', handleTvSeason)
-app.get('/api/watch/movie/:id', handleWatchMovie)
-app.get('/api/watch/tv/:id/:season/:episode', handleWatchEpisode)
+// Router con las rutas de la API (SIN prefijo /api).
+// Se monta bajo `/api` tanto local como en Vercel, para evitar ambigüedades
+// en cómo Vercel pasa la ruta a la función Express.
+const api = express.Router()
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }))
+api.get('/trending', handleTrending)
+api.get('/search', handleSearch)
+api.get('/movie/:id', handleMovie)
+api.get('/tv/:id', handleTv)
+api.get('/tv/:id/season/:season', handleTvSeason)
+api.get('/watch/movie/:id', handleWatchMovie)
+api.get('/watch/tv/:id/:season/:episode', handleWatchEpisode)
+api.get('/health', (_req, res) => res.json({ ok: true }))
+
+// Montamos bajo `/api`. Si Vercel le pasa la ruta ya sin el prefijo
+// (porque la función cuelga de /api), también respondemos en la raíz.
+app.use('/api', api)
+app.use(api)
 
 const PORT = process.env.PORT || 3001
 
