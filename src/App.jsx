@@ -8,6 +8,7 @@ const Search = lazy(() => import('./pages/Search.jsx'))
 const Detail = lazy(() => import('./pages/Detail.jsx'))
 const Watch = lazy(() => import('./pages/Watch.jsx'))
 const Plataforma = lazy(() => import('./pages/Plataforma.jsx'))
+const Historial = lazy(() => import('./pages/Historial.jsx'))
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<Search />} />
+            <Route path="/historial" element={<Historial />} />
             <Route path="/plataforma/:id" element={<Plataforma />} />
             <Route path="/movie/:id" element={<Detail type="movie" />} />
             <Route path="/tv/:id" element={<Detail type="tv" />} />

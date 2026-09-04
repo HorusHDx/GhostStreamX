@@ -1,38 +1,34 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
+import { loadHistory, watchPathFor } from '../history.js'
 
 const IMG = 'https://image.tmdb.org/t/p/w500'
-const HISTORY_KEY = 'ghoststreamx_history'
 
 // Fila "Continuar viendo" usando el historial local con metadata.
+// Se refresca al volver al inicio (por si se borró algo en /historial).
 export default function ContinuarViendo() {
   const [items, setItems] = useState([])
+  const location = useLocation()
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(HISTORY_KEY)
-      const map = raw ? JSON.parse(raw) : {}
-      const list = Object.values(map)
-        .filter((e) => e && e.mediaType && e.title)
-        .sort((a, b) => (b.t || 0) - (a.t || 0))
-        .slice(0, 10)
-      setItems(list)
-    } catch {
-      setItems([])
-    }
-  }, [])
+    setItems(loadHistory().slice(0, 10))
+  }, [location.pathname])
 
   if (items.length === 0) return null
 
-  const watchPath = (it) =>
-    it.mediaType === 'movie'
-      ? `/watch/movie/${it.id}`
-      : `/watch/tv/${it.id}?season=${it.season || 1}&episode=${it.episode || 1}`
-
   return (
     <section className="relative z-10 mb-12">
-      <div className="mb-4 px-5 md:px-12">
+      <div className="mb-4 flex items-baseline justify-between px-5 md:px-12">
         <h2 className="font-display text-2xl font-bold">Continuar viendo</h2>
+        <Link
+          to="/historial"
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[0.85rem] text-dimtext transition hover:text-white"
+        >
+          Historial
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </Link>
       </div>
 
       <div className="flex gap-4 overflow-x-auto px-5 pb-4 no-scrollbar md:px-12">
@@ -44,8 +40,8 @@ export default function ContinuarViendo() {
               : ''
           return (
             <Link
-              key={`${it.mediaType}-${it.id}-${it.season}-${it.episode}`}
-              to={watchPath(it)}
+              key={it.key}
+              to={watchPathFor(it)}
               className="group flex w-[280px] shrink-0 flex-col"
             >
               <div
