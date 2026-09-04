@@ -1,0 +1,25 @@
+# Node
+node_modules/
+*.log
+npm-debug.log*
+
+# Entorno
+.env
+.env.local
+.env.*.local
+
+# Build
+frontend/dist/
+dist/
+
+# Vercel
+.vercel/
+
+# README (lo mantenemos local / no se sube por discreción)
+README.md
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

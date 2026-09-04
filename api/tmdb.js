@@ -1,0 +1,71 @@
+// Cliente de TMDB para metadata.
+// Usa node-fetch (v3, ESM) por compatibilidad serverless.
+import fetch from 'node-fetch'
+
+const API_KEY = process.env.TMDB_API_KEY
+const BASE = 'https://api.themoviedb.org/3'
+const IMG = 'https://image.tmdb.org/t/p'
+
+let memo = {}
+
+async function call(path, params = {}) {
+  if (!API_KEY) throw new Error('Falta TMDB_API_KEY en las variables de entorno')
+
+  const url = new URL(`${BASE}${path}`)
+  url.searchParams.set('api_key', API_KEY)
+  url.searchParams.set('language', 'es-ES')
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null) url.searchParams.set(k, v)
+  }
+
+  const key = url.toString()
+  if (memo[key] && Date.now() - memo[key].t < 5 * 60 * 1000) {
+    return memo[key].data
+  }
+
+  const res = await fetch(url, {
+    headers: { accept: 'application/json' },
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`TMDB ${res.status}: ${text.slice(0, 200)}`)
+  }
+  const data = await res.json()
+  memo[key] = { t: Date.now(), data }
+  return data
+}
+
+// Redondea resultado de listas para el front (poster pequeño)
+function trimList(obj, itemsKey = 'results') {
+  const list = obj[itemsKey] || []
+  return list.map((it) => ({
+    id: it.id,
+    media_type: it.media_type || (it.title ? 'movie' : 'tv'),
+    title: it.title || it.name,
+    release_date: it.release_date || it.first_air_date,
+    poster_path: it.poster_path ? `${IMG}/w500${it.poster_path}` : null,
+    vote_average: it.vote_average,
+  }))
+}
+
+export const tmdb = {
+  fromId: (id) => id,
+
+  movie: (id) => call(`/movie/${id}`),
+  tv: (id) => call(`/tv/${id}`),
+  tvSeason: (id, season) => call(`/tv/${id}/season/${season}`),
+  searchMulti: (q) => call('/search/multi', { query: q }),
+
+  trending: async () => {
+    const [movies, tv] = await Promise.all([
+      call('/movie/popular'),
+      call('/tv/popular'),
+    ])
+    return trimList(movies)
+      .map((m) => ({ ...m, media_type: 'movie' }))
+      .concat(trimList(tv).map((s) => ({ ...s, media_type: 'tv' })))
+  },
+
+  trendingMovies: () => call('/movie/popular').then(trimList),
+  trendingTv: () => call('/tv/popular').then(trimList),
+}
