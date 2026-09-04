@@ -44,6 +44,8 @@ export default function Watch({ type }) {
   const [sources, setSources] = useState([])
   const [selected, setSelected] = useState(null)
   const [grupo, setGrupo] = useState('S1') // 'S1' UnlimPlay | 'S2' NasriPlay
+  const [resolvingToken, setResolvingToken] = useState(null)
+  const resolvedRef = useRef({})
   const [meta, setMeta] = useState({})
   const [seasons, setSeasons] = useState([])
   const [seasonNum, setSeasonNum] = useState(Number(seasonParam) || 1)
@@ -86,7 +88,7 @@ export default function Watch({ type }) {
       const g = list.some((s) => inGroup(s, 'S1')) ? 'S1' : 'S2'
       setSources(list)
       setGrupo(g)
-      setSelected(list.find((s) => inGroup(s, g)) || list[0])
+      pickSource(list.find((s) => inGroup(s, g)) || list[0])
     })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -149,7 +151,39 @@ export default function Watch({ type }) {
   const switchGrupo = (g) => {
     setGrupo(g)
     const first = sources.find((s) => (s.group || 'S1') === g)
-    if (first) setSelected(first)
+    if (first) pickSource(first)
+  }
+
+  // Elige una fuente; las S2 pendientes (name+token) se resuelven
+  // bajo demanda contra /watch/nsr/resolve (con cache en memoria).
+  const pickSource = async (s) => {
+    if (!s) return
+    if (!s.needsResolve) {
+      setSelected(s)
+      return
+    }
+    const hit = resolvedRef.current[s.token]
+    if (hit) {
+      setSelected({ ...s, url: hit.url, kind: hit.kind, needsResolve: false })
+      return
+    }
+    setSelected({ ...s })
+    setResolvingToken(s.token)
+    try {
+      const d = await api.nsrResolve(s.server, s.token)
+      if (d && d.url) {
+        resolvedRef.current[s.token] = { url: d.url, kind: d.kind || 'embed' }
+        setSelected((prev) =>
+          prev && prev.token === s.token
+            ? { ...s, url: d.url, kind: d.kind || 'embed', needsResolve: false }
+            : prev
+        )
+      }
+    } catch {
+      /* sin URL: el aviso del grupo + placeholder lo explican */
+    } finally {
+      setResolvingToken((t) => (t === s.token ? null : t))
+    }
   }
 
   const byLanguage = useMemo(() => {
@@ -164,6 +198,8 @@ export default function Watch({ type }) {
 
   const activeSelected =
     selected && (selected.group || 'S1') === grupo ? selected : null
+  // Solo se reproduce lo que ya tiene URL (las S2 se resuelven al elegir).
+  const effective = activeSelected && activeSelected.url ? activeSelected : null
 
   const currentEpisode =
     type === 'tv'
@@ -233,8 +269,17 @@ export default function Watch({ type }) {
             </div>
             <p className="text-[0.85rem] text-dimtext">Resolviendo fuentes…</p>
           </div>
-        ) : activeSelected ? (
-          <Player source={activeSelected} />
+        ) : resolvingToken ? (
+          <div className="flex aspect-video w-full flex-col items-center justify-center gap-4">
+            <div className="flex h-[82px] w-[82px] items-center justify-center rounded-full border border-spectral-dim bg-spectral-dim/20">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="#7FE7D4" className="ml-1 animate-pulse">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            <p className="text-[0.85rem] text-dimtext">Resolviendo servidor S2…</p>
+          </div>
+        ) : effective ? (
+          <Player source={effective} />
         ) : (
           <div className="flex aspect-video w-full items-center justify-center px-6 text-center text-[0.9rem] text-dimtext">
             Sin fuentes en {grupo === 'S2' ? 'S2 · NasriPlay' : 'S1 · UnlimPlay'} para
@@ -299,7 +344,7 @@ export default function Watch({ type }) {
                   value={activeSelected?.language || 'server'}
                   onChange={(e) => {
                     const group = byLanguage.get(e.target.value)
-                    if (group && group.length > 0) setSelected(group[0])
+                    if (group && group.length > 0) pickSource(group[0])
                   }}
                   className="w-full cursor-pointer appearance-none bg-transparent pr-6 font-sans text-[0.9rem] text-white outline-none [&>option]:bg-surface-2"
                 >
@@ -319,15 +364,17 @@ export default function Watch({ type }) {
               <label className="text-[0.75rem] text-dimtext">Servidor</label>
               <div className="relative flex min-w-[160px] items-center gap-2.5 rounded-[10px] border border-white/10 bg-surface-2 px-4 py-2.5 text-[0.9rem] transition hover:border-spectral/30 hover:bg-[#1c212a]">
                 <select
-                  value={activeSelected?.url || ''}
+                  value={activeSelected?.token || activeSelected?.url || ''}
                   onChange={(e) => {
-                    const s = groupSources.find((x) => x.url === e.target.value)
-                    if (s) setSelected(s)
+                    const s = groupSources.find(
+                      (x) => (x.token || x.url) === e.target.value
+                    )
+                    if (s) pickSource(s)
                   }}
                   className="w-full cursor-pointer appearance-none bg-transparent pr-6 font-sans text-[0.9rem] text-white outline-none [&>option]:bg-surface-2"
                 >
                   {(byLanguage.get(activeSelected?.language) || []).map((s) => (
-                    <option key={s.url} value={s.url}>
+                    <option key={s.token || s.url} value={s.token || s.url}>
                       {s.name}
                     </option>
                   ))}

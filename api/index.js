@@ -20,6 +20,7 @@ import {
   handleTvSeason,
   handleMovieRecs,
   handleTvRecs,
+  handleNsrResolve,
   handleWatchMovie,
   handleWatchEpisode,
 } from './handlers.js'
@@ -44,6 +45,7 @@ api.get('/movie/:id/recommendations', handleMovieRecs)
 api.get('/tv/:id/recommendations', handleTvRecs)
 api.get('/watch/movie/:id', handleWatchMovie)
 api.get('/watch/tv/:id/:season/:episode', handleWatchEpisode)
+api.get('/watch/nsr/resolve', handleNsrResolve)
 api.get('/health', (_req, res) => res.json({ ok: true }))
 
 // Montamos bajo `/api`. Si Vercel le pasa la ruta ya sin el prefijo

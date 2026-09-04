@@ -34,4 +34,8 @@ export const api = {
   watchMovie: (id) => get(`/watch/movie/${id}`),
   watchEpisode: (id, season, episode) =>
     get(`/watch/tv/${id}/${season}/${episode}`),
+
+  // Resuelve un servidor S2 (bajo demanda al elegirlo)
+  nsrResolve: (server, token) =>
+    get(`/watch/nsr/resolve?server=${encodeURIComponent(server)}&token=${encodeURIComponent(token)}`),
 }

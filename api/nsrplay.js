@@ -1,15 +1,31 @@
 // Cliente NasriPlay (S2) — https://nsrplay.space
-// - La API Key vive SOLO en el servidor (NSRPLAY_API_KEY). Nunca al front ni al repo.
-// - Respeta los límites: cache largo para búsqueda→slug (1h) y corto para
-//   servidores (10min). Un 429 o cualquier fallo deja S2 vacío sin romper S1.
-// - El match TMDB→slug es por título+año. Sin match seguro, devuelve [].
+// Estrategia híbrida:
+//   1) Vía directa por TMDB ID (/embed/sources + /embed/resolve): SIN key,
+//      SIN búsqueda. Es la vía primaria en pelis (verificado: 1-8 servers).
+//      En series hoy devuelve 0 (se mantiene la llamada por si lo pueblan).
+//   2) Vía búsqueda por título+año (/content/*, REQUIERE key): enriquece
+//      pelis y es la única vía para series (info→episodio→resolve→playUrl).
+// - La API Key vive SOLO en el servidor (NSRPLAY_API_KEY). Nunca al front.
+// - Cache: búsqueda→slug 1h, servidores/resolves 10min. Un 429 o fallo deja
+//   ese tramo vacío sin romper S1 ni el otro tramo.
 
 import { tmdb } from './tmdb.js'
 
 const BASE = process.env.NSRPLAY_BASE || 'https://nsrplay.space'
 
+// Como el worker de referencia: UA móvil + referer propio.
+const EMBED_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Linux; Android 12; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
+  Referer: 'https://nsrplay.space/',
+  Accept: 'application/json',
+}
+
 const TTL_SEARCH = 60 * 60 * 1000 // 1h: el slug de un título no cambia
 const TTL_SERVERS = 10 * 60 * 1000 // 10min: absorbe doble-clics sin gastar cuota
+const BRANCH_TIMEOUT = 9000 // tope por rama S2: /watch nunca se cuelga por S2
+const RESOLVE_TIMEOUT = 45000 // el resolve scrapea en vivo y a veces tarda 20s+;
+// corre bajo demanda (el front muestra "Resolviendo S2…"), no en /watch.
 
 const memo = new Map() // key -> { t, data }
 
@@ -37,7 +53,21 @@ async function call(path, params = {}) {
       headers: { 'X-API-Key': apiKey, accept: 'application/json' },
       signal: AbortSignal.timeout(15000),
     })
-    if (!res.ok) return null // 429, 4xx, 5xx: S2 vacío, S1 sigue
+    if (!res.ok) return null // 429, 4xx, 5xx: ese tramo vacío, el resto sigue
+    return await res.json().catch(() => null)
+  } catch {
+    return null
+  }
+}
+
+// Llamada keyless a /embed/* (no consume cuota de la key).
+async function embedCall(path) {
+  try {
+    const res = await fetch(`${BASE}/api/v1${path}`, {
+      headers: EMBED_HEADERS,
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) return null
     return await res.json().catch(() => null)
   } catch {
     return null
@@ -147,7 +177,8 @@ function toSources(list) {
   return out
 }
 
-export async function resolveNsrSources({ type, tmdbId, season = 1, episode = 1 }) {
+// Vía 2 (key): búsqueda por título+año → info/servers.
+async function resolveViaSearch({ type, tmdbId, season = 1, episode = 1 }) {
   try {
     if (!process.env.NSRPLAY_API_KEY) return []
 
@@ -209,4 +240,126 @@ export async function resolveNsrSources({ type, tmdbId, season = 1, episode = 1 
   } catch {
     return []
   }
+}
+
+// Resuelve un servidor {name, token} a URLs reproducibles.
+// Prefiere playUrl (proxy directo, menos anuncios); si además hay directUrl
+// (embed del host), lo suma como opción aparte.
+async function resolveEmbedServer(s) {
+  try {
+    const url =
+      `${BASE}/api/v1/embed/resolve?server=${encodeURIComponent(s.name)}` +
+      `&token=${encodeURIComponent(s.token)}`
+    const res = await fetch(url, {
+      headers: EMBED_HEADERS,
+      signal: AbortSignal.timeout(RESOLVE_TIMEOUT),
+    })
+    if (!res.ok) return []
+    const data = await res.json().catch(() => null)
+    const info = data && (data.data || data)
+    if (!info) return []
+    const out = []
+    const playUrl = info.playUrl
+    const directUrl = info.directUrl
+    if (typeof playUrl === 'string' && /^https?:\/\//.test(playUrl)) {
+      out.push({
+        name: `${s.name} · Directo`,
+        label: `Directo · ${s.name}`,
+        language: null,
+        kind: 'direct',
+        url: playUrl,
+        group: 'S2',
+      })
+    }
+    if (
+      typeof directUrl === 'string' &&
+      /^https?:\/\//.test(directUrl) &&
+      directUrl !== playUrl
+    ) {
+      out.push({
+        name: s.name,
+        label: `Servidor · ${s.name}`,
+        language: null,
+        kind: directUrl.includes('.m3u8') ? 'direct' : 'embed',
+        url: directUrl,
+        group: 'S2',
+      })
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
+// Resolve bajo demanda (lo llama el front al elegir servidor S2).
+// Cacheado: el token se resuelve una vez cada 10min.
+export async function resolveNsrToken(server, token) {
+  if (!server || !token) return null
+  const ck = `nsr:tok:${server}:${token}`
+  const cached = getMemo(ck, TTL_SERVERS)
+  if (cached !== undefined) return cached
+  const out = await resolveEmbedServer({ name: server, token })
+  const first = out[0] || null
+  setMemo(ck, first)
+  return first
+}
+
+// Vía 1 (keyless): servers directos por TMDB ID, SIN resolver.
+// Se listan al instante; el front resuelve el elegido vía resolveNsrToken.
+// Así /watch nunca se cuelga por un resolve lento y no se quema cuota.
+async function resolveViaEmbed({ type, tmdbId, season = 1, episode = 1 }) {
+  try {
+    const ck = `nsr:embed:${type}:${tmdbId}:${season}:${episode}`
+    const cached = getMemo(ck, TTL_SERVERS)
+    if (cached !== undefined) return cached
+    const path =
+      type === 'movie'
+        ? `/embed/sources/movie/${tmdbId}?fast=true`
+        : `/embed/sources/tv/${tmdbId}/${season}/${episode}?fast=true`
+    const data = await embedCall(path)
+    const servers = data && Array.isArray(data.servers) ? data.servers : []
+    const out = servers
+      .filter((s) => s && s.name && s.token)
+      .map((s) => ({
+        name: s.name,
+        label: `Servidor · ${s.name}`,
+        language: null,
+        kind: 'embed',
+        url: null, // se completa al elegir (resolveNsrToken)
+        needsResolve: true,
+        server: s.name,
+        token: s.token,
+        group: 'S2',
+      }))
+    setMemo(ck, out)
+    return out
+  } catch {
+    return []
+  }
+}
+
+function withTimeout(p, ms) {
+  const sentinel = { __timeout: true }
+  return Promise.race([
+    Promise.resolve(p),
+    new Promise((resolve) => setTimeout(() => resolve(sentinel), ms)),
+  ]).then((v) => (v && v.__timeout ? [] : v))
+}
+
+// Entrada principal S2: corre ambas vías en paralelo (con tope) y une.
+export async function resolveNsrSources(args) {
+  const [v1, v2] = await Promise.all([
+    withTimeout(resolveViaEmbed(args), BRANCH_TIMEOUT),
+    withTimeout(resolveViaSearch(args), BRANCH_TIMEOUT),
+  ])
+  const list = [...v1, ...v2]
+  const seen = new Set()
+  return list.filter((s) => {
+    if (!s) return false
+    // Los pendientes aún no tienen url: se distinguen por server+token.
+    const k = s.url || `pending:${s.server}:${s.token}`
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
 }

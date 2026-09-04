@@ -147,6 +147,25 @@ export async function handleTvRecs(req, res) {
   }
 }
 
+// Resuelve un servidor S2 (name+token) a su URL reproducible.
+// Lo llama el front al elegir el servidor (bajo demanda, cacheado).
+export async function handleNsrResolve(req, res) {
+  try {
+    const { server, token } = req.query
+    if (!server || !token) {
+      return res.status(400).json({ error: 'Faltan server y token' })
+    }
+    const { resolveNsrToken } = await import('./nsrplay.js')
+    const r = await resolveNsrToken(server, token)
+    if (!r || !r.url) {
+      return res.status(404).json({ error: 'No se pudo resolver el servidor' })
+    }
+    res.json(r)
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+
 // Episodios de una temporada
 export async function handleTvSeason(req, res) {
   try {
