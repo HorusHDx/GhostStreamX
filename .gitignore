@@ -9,7 +9,6 @@ npm-debug.log*
 .env.*.local
 
 # Build
-frontend/dist/
 dist/
 
 # Vercel
