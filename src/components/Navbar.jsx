@@ -21,7 +21,7 @@ export default function Navbar() {
 
   return (
     <header
-      className={`fixed left-0 right-0 top-0 z-100 flex items-center justify-between px-5 py-5 transition-all duration-300 md:px-12 ${
+      className={`fixed left-0 right-0 top-0 z-[100] flex items-center justify-between px-5 py-5 transition-all duration-300 md:px-12 ${
         scrolled
           ? 'bg-[#08090c]/75 shadow-[0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl'
           : 'bg-gradient-to-b from-[rgba(8,9,12,0.7)] to-transparent'

@@ -44,6 +44,8 @@ export default function Home() {
       <div className="relative z-10 -mt-16">
         <ContinuarViendo />
 
+        <TopPorPlataforma />
+
         {rows.map((row) =>
           row.top ? (
             <TopRow
@@ -56,8 +58,6 @@ export default function Home() {
             <Row key={row.title} title={row.title} items={row.items} />
           )
         )}
-
-        <TopPorPlataforma />
       </div>
     </div>
   )
