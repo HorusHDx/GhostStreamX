@@ -137,23 +137,15 @@ export default function Watch({ type }) {
       .catch(() => setEpisodes([]))
   }, [type, id, seasonNum])
 
-  // Recomendados: tops del home sin el título actual.
+  // Recomendados reales: secuelas, misma saga y similares (TMDB).
   useEffect(() => {
-    api
-      .home()
-      .then((d) => {
-        const tops = (d.sections || [])
-          .filter((s) => s.top)
-          .flatMap((s) =>
-            (s.items || []).map((it) => ({
-              ...it,
-              media_type: s.type || it.media_type,
-            }))
-          )
-        setRecs(tops.filter((t) => String(t.id) !== String(id)).slice(0, 12))
-      })
-      .catch(() => {})
-  }, [id])
+    const p = type === 'movie' ? api.movieRecs(id) : api.tvRecs(id)
+    p.then((d) =>
+      setRecs(
+        (d.items || []).filter((t) => String(t.id) !== String(id)).slice(0, 12)
+      )
+    ).catch(() => {})
+  }, [type, id])
 
   // Agrupa las fuentes por idioma para armar los selects.
   const byLanguage = useMemo(() => {

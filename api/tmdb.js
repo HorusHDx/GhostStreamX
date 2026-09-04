@@ -98,4 +98,18 @@ export const tmdb = {
   // --- Riqueza para detalles/slider (incluye backdrop) ---
   detailMovie: (id) => call(`/movie/${id}`),
   detailTv: (id) => call(`/tv/${id}`),
+
+  // --- Recomendados reales ("También te puede interesar") ---
+  // Primero /recommendations (secuelas, misma saga, gustos afines);
+  // si viene vacío, completa con /similar. Todo en español.
+  async recommendations(type, id) {
+    const path = type === 'movie' ? `/movie/${id}` : `/tv/${id}`
+    const [recs, sim] = await Promise.allSettled([
+      call(`${path}/recommendations`).then(trimList),
+      call(`${path}/similar`).then(trimList),
+    ])
+    const list = recs.status === 'fulfilled' ? recs.value : []
+    if (list.length > 0) return list
+    return sim.status === 'fulfilled' ? sim.value : []
+  },
 }

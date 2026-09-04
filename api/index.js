@@ -19,6 +19,8 @@ import {
   handleMovie,
   handleTv,
   handleTvSeason,
+  handleMovieRecs,
+  handleTvRecs,
   handleWatchMovie,
   handleWatchEpisode,
 } from './handlers.js'
@@ -40,6 +42,8 @@ api.get('/search', handleSearch)
 api.get('/movie/:id', handleMovie)
 api.get('/tv/:id', handleTv)
 api.get('/tv/:id/season/:season', handleTvSeason)
+api.get('/movie/:id/recommendations', handleMovieRecs)
+api.get('/tv/:id/recommendations', handleTvRecs)
 api.get('/watch/movie/:id', handleWatchMovie)
 api.get('/watch/tv/:id/:season/:episode', handleWatchEpisode)
 api.get('/health', (_req, res) => res.json({ ok: true }))

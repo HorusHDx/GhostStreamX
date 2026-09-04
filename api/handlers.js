@@ -177,6 +177,26 @@ export async function handleTv(req, res) {
   }
 }
 
+// Recomendados de una película (secuelas, saga, similares)
+export async function handleMovieRecs(req, res) {
+  try {
+    const items = await tmdb.recommendations('movie', req.params.id)
+    res.json({ items: items.map((i) => ({ ...i, media_type: 'movie' })) })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+
+// Recomendados de una serie (temporadas, spin-offs, similares)
+export async function handleTvRecs(req, res) {
+  try {
+    const items = await tmdb.recommendations('tv', req.params.id)
+    res.json({ items: items.map((i) => ({ ...i, media_type: 'tv' })) })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+
 // Episodios de una temporada
 export async function handleTvSeason(req, res) {
   try {

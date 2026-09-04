@@ -29,6 +29,10 @@ export const api = {
   tv: (id) => get(`/tv/${id}`),
   tvSeason: (id, season) => get(`/tv/${id}/season/${season}`),
 
+  // Recomendados reales (secuelas, saga, similares)
+  movieRecs: (id) => get(`/movie/${id}/recommendations`),
+  tvRecs: (id) => get(`/tv/${id}/recommendations`),
+
   // Fuentes de reproducción (embed / m3u8)
   watchMovie: (id) => get(`/watch/movie/${id}`),
   watchEpisode: (id, season, episode) =>
