@@ -103,6 +103,21 @@ function pickSlug(candidates, { type, year, title }) {
   return bestScore > 0 ? best : null
 }
 
+// URL de la página del episodio dentro de info.data.seasons[].episodes[].
+function findEpisodeUrl(data, season, episode) {
+  if (!data) return null
+  const seasons = Array.isArray(data.seasons) ? data.seasons : []
+  const s = seasons.find(
+    (x) => Number(x.number ?? x.season_number ?? x.season) === Number(season)
+  )
+  const eps = s && Array.isArray(s.episodes) ? s.episodes : []
+  const ep = eps.find(
+    (e) => Number(e.number ?? e.episode_number ?? e.episode) === Number(episode)
+  )
+  const url = ep && (ep.url || ep.link || ep.embed)
+  return typeof url === 'string' && /^https?:\/\//.test(url) ? url : null
+}
+
 function normLang(raw) {
   const l = norm(raw)
   if (!l) return null
@@ -156,20 +171,41 @@ export async function resolveNsrSources({ type, tmdbId, season = 1, episode = 1 
     if (!pick) return []
 
     // 2) Servidores (cache 10min).
+    // Pelis: /info trae embeds directos con idioma. Series: /info trae
+    // temporadas con la URL de cada episodio, que se resuelve a playUrl
+    // (proxy listo para <video>) vía /resolve. El slug va CRUDO en el path
+    // (con su slash): encodearlo rompe el router de nsrplay.
     const sk = `nsr:srv:${type}:${pick.slug}:${season}:${episode}`
-    let payload = getMemo(sk, TTL_SERVERS)
-    if (payload === undefined) {
-      payload =
-        type === 'movie'
-          ? await call(`/content/info/${pick.slug}`, { type: 'movie' })
-          : await call('/content/servers', {
-              slug: pick.slug,
-              season,
-              episode,
-            })
-      setMemo(sk, payload)
+    const cached = getMemo(sk, TTL_SERVERS)
+    if (cached !== undefined) return cached
+    let out = []
+    if (type === 'movie') {
+      const payload = await call(`/content/info/${pick.slug}`, { type: 'movie' })
+      const pdata = payload && payload.data ? payload.data : payload
+      out = toSources(asList(pdata))
+    } else {
+      const info = await call(`/content/info/${pick.slug}`, { type: 'series' })
+      const epUrl = findEpisodeUrl(info && info.data ? info.data : info, season, episode)
+      if (epUrl) {
+        const resolved = await call('/content/resolve', { url: epUrl })
+        const rdata = resolved && (resolved.data || resolved)
+        const playUrl = rdata && (rdata.playUrl || rdata.directUrl)
+        if (typeof playUrl === 'string' && /^https?:\/\//.test(playUrl)) {
+          out = [
+            {
+              name: 'NasriPlay',
+              label: 'Directo · NasriPlay',
+              language: null,
+              kind: 'direct',
+              url: playUrl,
+              group: 'S2',
+            },
+          ]
+        }
+      }
     }
-    return toSources(asList(payload))
+    setMemo(sk, out)
+    return out
   } catch {
     return []
   }

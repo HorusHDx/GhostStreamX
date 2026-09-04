@@ -9,6 +9,7 @@ import { useEffect, useRef } from 'react'
 export default function Player({ source }) {
   const videoRef = useRef(null)
   const hlsRef = useRef(null)
+  const errRef = useRef(null)
 
   // Normaliza: acepta `url` (nueva estructura) o `src` (estructura antigua).
   const src = source?.url || source?.src
@@ -24,6 +25,10 @@ export default function Player({ source }) {
     const video = videoRef.current
 
     if (!video) return
+    if (errRef.current) {
+      video.removeEventListener('error', errRef.current)
+      errRef.current = null
+    }
 
     const isM3u8 = src?.includes('.m3u8')
     const isEmbed = kind === 'embed' || (src && src.startsWith('http') === false)
@@ -44,9 +49,32 @@ export default function Player({ source }) {
     } else if (!isEmbed && src) {
       video.src = src
       video.load()
+      // Si el nativo falla (p. ej. un proxy HLS sin extensión .m3u8 como el
+      // de S2), reintenta una sola vez con hls.js antes de rendirse.
+      const onErr = () => {
+        video.removeEventListener('error', onErr)
+        errRef.current = null
+        import('hls.js').then(({ default: Hls }) => {
+          if (!Hls.isSupported()) return
+          try {
+            const h = new Hls()
+            h.loadSource(src)
+            h.attachMedia(video)
+            hlsRef.current = h
+          } catch {
+            /* roto igual: el usuario puede cambiar de servidor */
+          }
+        })
+      }
+      errRef.current = onErr
+      video.addEventListener('error', onErr)
     }
 
     return () => {
+      if (errRef.current && videoRef.current) {
+        videoRef.current.removeEventListener('error', errRef.current)
+        errRef.current = null
+      }
       if (hlsRef.current) {
         hlsRef.current.destroy()
         hlsRef.current = null
