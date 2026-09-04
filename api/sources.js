@@ -9,6 +9,8 @@
 // Nota para Windows/Node: fetch nativo disponible en Node >= 18.
 const fetch = globalThis.fetch
 
+import { resolveNsrSources } from './nsrplay.js'
+
 // --- UnlimPlay: URL del embed (según tipo) ---
 function unlimplayEmbedUrl({ type, tmdbId, season, episode }) {
   if (type === 'movie') {
@@ -60,10 +62,10 @@ async function fetchServersJson(embedUrl) {
   }
 }
 
-// --- Resolución: extrae servidores de UnlimPlay ---
+// --- Resolución S1: extrae servidores de UnlimPlay ---
 // Devuelve fuentes planas, una por servidor, cada una con su idioma y grupo.
 // Si no logramos extraer, devuelve el embed por defecto (modo automático de UnlimPlay).
-export async function resolveSources({ type, tmdbId, season = 1, episode = 1 }) {
+async function resolveUnlim({ type, tmdbId, season = 1, episode = 1 }) {
   const embedUrl = unlimplayEmbedUrl({ type, tmdbId, season, episode })
   const sources = []
 
@@ -92,4 +94,20 @@ export async function resolveSources({ type, tmdbId, season = 1, episode = 1 }) 
   }
 
   return sources
+}
+
+// --- Resolución combinada S1 (UnlimPlay) + S2 (NasriPlay) ---
+// Ambos corren en paralelo e independientes: si uno falla o no tiene el
+// título, el otro sigue devolviendo sus fuentes con su `group`.
+export async function resolveSources({ type, tmdbId, season = 1, episode = 1 }) {
+  const [s1, s2] = await Promise.allSettled([
+    resolveUnlim({ type, tmdbId, season, episode }),
+    resolveNsrSources({ type, tmdbId, season, episode }),
+  ])
+  const unlim = s1.status === 'fulfilled' ? s1.value : []
+  const nsr = s2.status === 'fulfilled' ? s2.value : []
+  return [
+    ...unlim.map((s) => ({ ...s, group: s.group || 'S1' })),
+    ...nsr.map((s) => ({ ...s, group: 'S2' })),
+  ]
 }

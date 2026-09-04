@@ -43,6 +43,7 @@ export default function Watch({ type }) {
   const [error, setError] = useState('')
   const [sources, setSources] = useState([])
   const [selected, setSelected] = useState(null)
+  const [grupo, setGrupo] = useState('S1') // 'S1' UnlimPlay | 'S2' NasriPlay
   const [meta, setMeta] = useState({})
   const [seasons, setSeasons] = useState([])
   const [seasonNum, setSeasonNum] = useState(Number(seasonParam) || 1)
@@ -81,8 +82,11 @@ export default function Watch({ type }) {
         setError(data.message || 'No se encontró una fuente disponible.')
         return
       }
+      const inGroup = (s, g) => (s.group || 'S1') === g
+      const g = list.some((s) => inGroup(s, 'S1')) ? 'S1' : 'S2'
       setSources(list)
-      setSelected(list[0])
+      setGrupo(g)
+      setSelected(list.find((s) => inGroup(s, g)) || list[0])
     })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -129,16 +133,37 @@ export default function Watch({ type }) {
     ).catch(() => {})
   }, [type, id])
 
-  // Agrupa las fuentes por idioma para armar los selects.
+  // Fuentes del grupo activo (S1/S2) agrupadas por idioma para los selects.
+  const groupSources = useMemo(
+    () => sources.filter((s) => (s.group || 'S1') === grupo),
+    [sources, grupo]
+  )
+  const s1Count = useMemo(
+    () => sources.filter((s) => (s.group || 'S1') === 'S1').length,
+    [sources]
+  )
+  const s2Count = useMemo(
+    () => sources.filter((s) => s.group === 'S2').length,
+    [sources]
+  )
+  const switchGrupo = (g) => {
+    setGrupo(g)
+    const first = sources.find((s) => (s.group || 'S1') === g)
+    if (first) setSelected(first)
+  }
+
   const byLanguage = useMemo(() => {
     const map = new Map()
-    for (const s of sources) {
+    for (const s of groupSources) {
       const key = s.language || 'server'
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(s)
     }
     return map
-  }, [sources])
+  }, [groupSources])
+
+  const activeSelected =
+    selected && (selected.group || 'S1') === grupo ? selected : null
 
   const currentEpisode =
     type === 'tv'
@@ -199,7 +224,6 @@ export default function Watch({ type }) {
             </span>
           </div>
         )}
-
         {loading ? (
           <div className="flex aspect-video w-full flex-col items-center justify-center gap-4">
             <div className="flex h-[82px] w-[82px] items-center justify-center rounded-full border border-white/25 bg-white/5">
@@ -209,8 +233,13 @@ export default function Watch({ type }) {
             </div>
             <p className="text-[0.85rem] text-dimtext">Resolviendo fuentes…</p>
           </div>
+        ) : activeSelected ? (
+          <Player source={activeSelected} />
         ) : (
-          selected && <Player source={selected} />
+          <div className="flex aspect-video w-full items-center justify-center px-6 text-center text-[0.9rem] text-dimtext">
+            Sin fuentes en {grupo === 'S2' ? 'S2 · NasriPlay' : 'S1 · UnlimPlay'} para
+            este título.
+          </div>
         )}
       </div>
 
@@ -227,13 +256,47 @@ export default function Watch({ type }) {
           </h1>
           {sub && <p className="mb-[22px] text-[0.95rem] text-dimtext">{sub}</p>}
 
+          {/* Tabs S1 / S2 */}
+          <div className="mb-4 flex gap-2">
+            {[
+              { id: 'S1', label: 'S1 · UnlimPlay', count: s1Count },
+              { id: 'S2', label: 'S2 · NasriPlay', count: s2Count },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => switchGrupo(t.id)}
+                className={`rounded-full border px-4 py-2 text-[0.85rem] font-semibold transition ${
+                  grupo === t.id
+                    ? 'border-spectral-dim bg-spectral-dim/20 text-spectral'
+                    : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
+                }`}
+              >
+                {t.label} ({t.count})
+              </button>
+            ))}
+          </div>
+
+          {groupSources.length === 0 ? (
+            <div className="mb-6 rounded-[10px] border border-white/10 bg-surface-2 p-4 text-[0.9rem] text-dimtext">
+              {grupo === 'S2'
+                ? 'S2 no devolvió fuentes para este título (sin match o sin key configurada).'
+                : 'S1 no devolvió fuentes para este título.'}{' '}
+              <button
+                onClick={() => switchGrupo(grupo === 'S2' ? 'S1' : 'S2')}
+                className="font-semibold text-spectral hover:underline"
+              >
+                Usar {grupo === 'S2' ? 'S1' : 'S2'}
+              </button>
+            </div>
+          ) : null}
+
           <div className="mb-6 flex flex-wrap gap-4">
             <div className="flex flex-col gap-[7px]">
               <label className="text-[0.75rem] text-dimtext">Idioma / audio</label>
               <div className="relative flex min-w-[160px] items-center gap-2.5 rounded-[10px] border border-white/10 bg-surface-2 px-4 py-2.5 text-[0.9rem] transition hover:border-spectral/30 hover:bg-[#1c212a]">
                 <span className="h-2 w-2 shrink-0 rounded-full bg-spectral" />
                 <select
-                  value={selected?.language || 'server'}
+                  value={activeSelected?.language || 'server'}
                   onChange={(e) => {
                     const group = byLanguage.get(e.target.value)
                     if (group && group.length > 0) setSelected(group[0])
@@ -256,14 +319,14 @@ export default function Watch({ type }) {
               <label className="text-[0.75rem] text-dimtext">Servidor</label>
               <div className="relative flex min-w-[160px] items-center gap-2.5 rounded-[10px] border border-white/10 bg-surface-2 px-4 py-2.5 text-[0.9rem] transition hover:border-spectral/30 hover:bg-[#1c212a]">
                 <select
-                  value={selected?.url || ''}
+                  value={activeSelected?.url || ''}
                   onChange={(e) => {
-                    const s = sources.find((x) => x.url === e.target.value)
+                    const s = groupSources.find((x) => x.url === e.target.value)
                     if (s) setSelected(s)
                   }}
                   className="w-full cursor-pointer appearance-none bg-transparent pr-6 font-sans text-[0.9rem] text-white outline-none [&>option]:bg-surface-2"
                 >
-                  {(byLanguage.get(selected?.language) || []).map((s) => (
+                  {(byLanguage.get(activeSelected?.language) || []).map((s) => (
                     <option key={s.url} value={s.url}>
                       {s.name}
                     </option>
