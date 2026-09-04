@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { api } from '../api.js'
 import Player from '../components/Player.jsx'
+import PosterCard from '../components/PosterCard.jsx'
 
 const HISTORY_KEY = 'ghoststreamx_history'
+const AUTOPLAY_KEY = 'ghoststreamx_autoplay'
+const STILL = 'https://image.tmdb.org/t/p/w500'
 
 function saveProgress(key, seconds, meta = {}) {
   try {
@@ -20,17 +23,59 @@ function saveProgress(key, seconds, meta = {}) {
   }
 }
 
+const prettyLang = (l) => {
+  if (!l || l === 'server') return 'Servidores'
+  const map = {
+    latino: 'Latino',
+    castellano: 'Castellano',
+    subtitulado: 'Subtitulado',
+    english: 'English',
+  }
+  return map[l] || l
+}
+
 export default function Watch({ type }) {
   const { id } = useParams()
   const [params] = useSearchParams()
-  const season = params.get('season') || ''
-  const episode = params.get('episode') || ''
+  const seasonParam = params.get('season') || ''
+  const episodeParam = params.get('episode') || ''
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sources, setSources] = useState([])
   const [selected, setSelected] = useState(null)
   const [meta, setMeta] = useState({})
+  const [seasons, setSeasons] = useState([])
+  const [seasonNum, setSeasonNum] = useState(Number(seasonParam) || 1)
+  const [episodes, setEpisodes] = useState([])
+  const [recs, setRecs] = useState([])
+  const [autoplay, setAutoplay] = useState(() => {
+    try {
+      return localStorage.getItem(AUTOPLAY_KEY) !== '0'
+    } catch {
+      return true
+    }
+  })
+
+  const epTrackRef = useRef(null)
+  const recTrackRef = useRef(null)
+  const scrollRail = (ref, dir) =>
+    ref.current?.scrollBy({ left: dir * 420, behavior: 'smooth' })
+
+  const toggleAutoplay = () => {
+    const next = !autoplay
+    setAutoplay(next)
+    try {
+      localStorage.setItem(AUTOPLAY_KEY, next ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Mantiene la temporada del selector sincronizada con la URL.
+  useEffect(() => {
+    if (seasonParam) setSeasonNum(Number(seasonParam))
+  }, [seasonParam])
 
   useEffect(() => {
     setLoading(true)
@@ -38,12 +83,14 @@ export default function Watch({ type }) {
     setSources([])
     setSelected(null)
     setMeta({})
+    setSeasons([])
+    setEpisodes([])
 
     const p =
       type === 'movie'
         ? api.watchMovie(id)
-        : season && episode
-          ? api.watchEpisode(id, season, episode)
+        : seasonParam && episodeParam
+          ? api.watchEpisode(id, seasonParam, episodeParam)
           : Promise.resolve({ sources: [], message: 'Faltan temporada/episodio' })
 
     p.then((data) => {
@@ -58,21 +105,55 @@ export default function Watch({ type }) {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
 
-    // Obtiene metadata (título/poster) para "Continuar viendo"
-    const metaP =
-      type === 'movie'
-        ? api.movie(id)
-        : api.tv(id)
+    // Metadata completa para el encabezado y "Continuar viendo".
+    const metaP = type === 'movie' ? api.movie(id) : api.tv(id)
     metaP
       .then((d) =>
         setMeta({
           title: d.title || d.name,
+          overview: d.overview,
+          genres: (d.genres || []).map((g) => g.name),
+          year: (d.release_date || d.first_air_date || '').slice(0, 4),
+          runtime: d.runtime || (d.episode_run_time && d.episode_run_time[0]),
           poster: d.poster_path,
         })
       )
       .catch(() => {})
+    if (type === 'tv') {
+      api
+        .tv(id)
+        .then((d) => setSeasons((d.seasons || []).filter((s) => s.season_number > 0)))
+        .catch(() => {})
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, id, season, episode])
+  }, [type, id, seasonParam, episodeParam])
+
+  // Episodios de la temporada visible (solo series).
+  useEffect(() => {
+    if (type !== 'tv') return
+    api
+      .tvSeason(id, seasonNum)
+      .then((d) => setEpisodes(d.episodes || []))
+      .catch(() => setEpisodes([]))
+  }, [type, id, seasonNum])
+
+  // Recomendados: tops del home sin el título actual.
+  useEffect(() => {
+    api
+      .home()
+      .then((d) => {
+        const tops = (d.sections || [])
+          .filter((s) => s.top)
+          .flatMap((s) =>
+            (s.items || []).map((it) => ({
+              ...it,
+              media_type: s.type || it.media_type,
+            }))
+          )
+        setRecs(tops.filter((t) => String(t.id) !== String(id)).slice(0, 12))
+      })
+      .catch(() => {})
+  }, [id])
 
   // Agrupa las fuentes por idioma para armar los selects.
   const byLanguage = useMemo(() => {
@@ -85,75 +166,313 @@ export default function Watch({ type }) {
     return map
   }, [sources])
 
+  const currentEpisode =
+    type === 'tv'
+      ? episodes.find((e) => String(e.episode_number) === String(episodeParam))
+      : null
+  const nextEpisode =
+    type === 'tv' && episodeParam
+      ? episodes.find((e) => e.episode_number === Number(episodeParam) + 1)
+      : null
+  const showNext = autoplay && nextEpisode && String(seasonNum) === String(seasonParam || seasonNum)
+
+  const genresText = (meta.genres || []).join(', ')
+  const sub =
+    type === 'movie'
+      ? [meta.year, meta.runtime ? `${meta.runtime} min` : '', genresText]
+          .filter(Boolean)
+          .join(' · ')
+      : [
+          currentEpisode?.runtime || meta.runtime
+            ? `${currentEpisode?.runtime || meta.runtime} min`
+            : '',
+          genresText,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+
   return (
-    <div className="pt-20 px-6">
+    <div className="relative z-10 mx-auto w-full max-w-[1240px] px-5 pb-20 pt-24 md:px-12">
       <Link
         to={type === 'movie' ? `/movie/${id}` : `/tv/${id}`}
-        className="mb-4 text-sm text-gray-400 hover:text-white"
+        className="mb-5 inline-flex items-center gap-2 text-[0.9rem] text-dimtext transition hover:text-spectral"
       >
-        ← Volver al detalle
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+        Volver al detalle
       </Link>
 
       <ProgressTracker enabled={!!selected} getPosition={() => 0} meta={meta} />
 
-      {loading && (
-        <div className="flex aspect-video w-full items-center justify-center bg-black text-gray-500">
-          Resolviendo fuentes…
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="rounded border border-red-900 bg-red-950/40 p-4 text-red-300">
+      {error && (
+        <div className="mb-5 rounded-[10px] border border-red-900 bg-red-950/40 p-4 text-red-300">
           {error}
         </div>
       )}
 
-      {!loading && !error && selected && (
-        <div className="mx-auto max-w-5xl">
-          <h1 className="mb-4 text-xl font-semibold">
-            Reproduciendo
-            {type === 'tv' && season && episode
-              ? ` · Temporada ${season} - Episodio ${episode}`
-              : ''}
-          </h1>
-
-          {/* Selector de servidor */}
-          <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
-            <select
-              value={selected?.language || ''}
-              onChange={(e) => {
-                const group = byLanguage.get(e.target.value)
-                if (group && group.length > 0) setSelected(group[0])
-              }}
-              className="rounded border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-200 outline-none focus:border-red-600"
-            >
-              {[...byLanguage.keys()].map((lang) => (
-                <option key={lang} value={lang}>
-                  {lang === 'server' ? 'Servidores' : lang}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selected?.url || ''}
-              onChange={(e) => {
-                const s = sources.find((x) => x.url === e.target.value)
-                if (s) setSelected(s)
-              }}
-              className="rounded border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-200 outline-none focus:border-red-600"
-            >
-              {(byLanguage.get(selected?.language) || []).map((s) => (
-                <option key={s.url} value={s.url}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs text-gray-500">
-              {selected.label || selected.name}
+      {/* ---------- FRAME DEL REPRODUCTOR ---------- */}
+      <div className="relative overflow-hidden rounded-[14px] border border-white/10 bg-gradient-to-br from-[#1a1e28] to-[#0a0b10] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+        {selected && (
+          <div className="pointer-events-none absolute right-[18px] top-[18px] z-[3] flex gap-2">
+            <span className="rounded-[20px] border border-white/15 bg-black/55 px-3 py-1 text-[0.75rem] text-dimtext backdrop-blur-md">
+              HD
+            </span>
+            <span className="rounded-[20px] border border-white/15 bg-black/55 px-3 py-1 text-[0.75rem] text-dimtext backdrop-blur-md">
+              {prettyLang(selected.language)}
             </span>
           </div>
+        )}
 
-          <Player source={selected} />
+        {loading ? (
+          <div className="flex aspect-video w-full flex-col items-center justify-center gap-4">
+            <div className="flex h-[82px] w-[82px] items-center justify-center rounded-full border border-white/25 bg-white/5">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="#fff" className="ml-1 animate-pulse">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            <p className="text-[0.85rem] text-dimtext">Resolviendo fuentes…</p>
+          </div>
+        ) : (
+          selected && <Player source={selected} />
+        )}
+      </div>
+
+      {/* ---------- META + SELECTORES ---------- */}
+      {!loading && !error && selected && (
+        <div className="mt-7">
+          <p className="mb-2 text-[0.85rem] font-semibold text-spectral">
+            {type === 'movie' ? 'Película' : meta.title || 'Serie'}
+          </p>
+          <h1 className="mb-1.5 font-display text-[1.9rem] font-extrabold leading-tight tracking-tight max-md:text-[1.4rem]">
+            {type === 'movie'
+              ? meta.title || 'Reproduciendo'
+              : `Temporada ${seasonParam} · Episodio ${episodeParam}${currentEpisode?.name ? ` — "${currentEpisode.name}"` : ''}`}
+          </h1>
+          {sub && <p className="mb-[22px] text-[0.95rem] text-dimtext">{sub}</p>}
+
+          <div className="mb-6 flex flex-wrap gap-4">
+            <div className="flex flex-col gap-[7px]">
+              <label className="text-[0.75rem] text-dimtext">Idioma / audio</label>
+              <div className="relative flex min-w-[160px] items-center gap-2.5 rounded-[10px] border border-white/10 bg-surface-2 px-4 py-2.5 text-[0.9rem] transition hover:border-spectral/30 hover:bg-[#1c212a]">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-spectral" />
+                <select
+                  value={selected?.language || 'server'}
+                  onChange={(e) => {
+                    const group = byLanguage.get(e.target.value)
+                    if (group && group.length > 0) setSelected(group[0])
+                  }}
+                  className="w-full cursor-pointer appearance-none bg-transparent pr-6 font-sans text-[0.9rem] text-white outline-none [&>option]:bg-surface-2"
+                >
+                  {[...byLanguage.keys()].map((lang) => (
+                    <option key={lang} value={lang}>
+                      {prettyLang(lang)}
+                    </option>
+                  ))}
+                </select>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute right-[14px] text-dimtext">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-[7px]">
+              <label className="text-[0.75rem] text-dimtext">Servidor</label>
+              <div className="relative flex min-w-[160px] items-center gap-2.5 rounded-[10px] border border-white/10 bg-surface-2 px-4 py-2.5 text-[0.9rem] transition hover:border-spectral/30 hover:bg-[#1c212a]">
+                <select
+                  value={selected?.url || ''}
+                  onChange={(e) => {
+                    const s = sources.find((x) => x.url === e.target.value)
+                    if (s) setSelected(s)
+                  }}
+                  className="w-full cursor-pointer appearance-none bg-transparent pr-6 font-sans text-[0.9rem] text-white outline-none [&>option]:bg-surface-2"
+                >
+                  {(byLanguage.get(selected?.language) || []).map((s) => (
+                    <option key={s.url} value={s.url}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute right-[14px] text-dimtext">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 text-[0.85rem] text-dimtext max-md:w-full max-md:justify-between md:ml-auto md:self-end md:pb-2">
+              Reproducción automática
+              <button
+                onClick={toggleAutoplay}
+                role="switch"
+                aria-checked={autoplay}
+                aria-label="Reproducción automática"
+                className={`relative h-[22px] w-[38px] rounded-[12px] transition ${
+                  autoplay ? 'bg-spectral shadow-[0_0_10px_rgba(127,231,212,0.35)]' : 'bg-white/15'
+                }`}
+              >
+                <span
+                  className={`absolute left-[2px] top-[2px] h-[18px] w-[18px] rounded-full bg-white transition-transform ${
+                    autoplay ? 'translate-x-4' : ''
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {(currentEpisode?.overview || (type === 'movie' && meta.overview)) && (
+            <p className="max-w-[760px] text-[0.95rem] leading-relaxed text-[#C7CBD4]">
+              {type === 'movie' ? meta.overview : currentEpisode?.overview || meta.overview}
+            </p>
+          )}
+
+          {showNext && (
+            <Link
+              to={`/watch/tv/${id}?season=${seasonParam}&episode=${nextEpisode.episode_number}`}
+              className="mt-5 inline-flex items-center gap-2 rounded-full border border-spectral-dim px-5 py-2.5 text-[0.9rem] font-semibold text-spectral transition hover:bg-spectral-dim"
+            >
+              Siguiente episodio: E{nextEpisode.episode_number}
+              {nextEpisode.name ? ` — ${nextEpisode.name}` : ''}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* ---------- EPISODIOS (solo series) ---------- */}
+      {type === 'tv' && seasons.length > 0 && (
+        <div className="mt-12">
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="font-display text-[1.25rem] font-bold tracking-tight">
+              Episodios — Temporada {seasonNum}
+            </h2>
+            <div className="hidden gap-2 md:flex">
+              <button
+                onClick={() => scrollRail(epTrackRef, -1)}
+                aria-label="Anterior"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-dimtext transition hover:bg-white/10 hover:text-white"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+              </button>
+              <button
+                onClick={() => scrollRail(epTrackRef, 1)}
+                aria-label="Siguiente"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-dimtext transition hover:bg-white/10 hover:text-white"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {seasons.length > 1 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {seasons.map((s) => (
+                <button
+                  key={s.season_number}
+                  onClick={() => setSeasonNum(s.season_number)}
+                  className={`rounded-full border px-4 py-1.5 text-[0.85rem] transition ${
+                    seasonNum === s.season_number
+                      ? 'border-spectral-dim bg-spectral-dim/20 font-semibold text-spectral'
+                      : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
+                  }`}
+                >
+                  T{s.season_number}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div ref={epTrackRef} className="flex gap-4 overflow-x-auto pb-1 no-scrollbar">
+            {episodes.map((ep) => {
+              const isCurrent =
+                String(seasonNum) === String(seasonParam) &&
+                String(ep.episode_number) === String(episodeParam)
+              const still = ep.still_path ? `${STILL}${ep.still_path}` : null
+              return (
+                <Link
+                  key={ep.episode_number}
+                  to={`/watch/tv/${id}?season=${seasonNum}&episode=${ep.episode_number}`}
+                  className={`w-[280px] shrink-0 rounded-[10px] border p-2 transition ${
+                    isCurrent
+                      ? 'border-spectral-dim bg-spectral/5'
+                      : 'border-transparent hover:bg-white/5'
+                  }`}
+                >
+                  <div
+                    className="relative mb-2.5 aspect-video w-full overflow-hidden rounded-lg bg-cover bg-center"
+                    style={{
+                      backgroundImage: still ? `url(${still})` : 'linear-gradient(160deg,#233047,#0e1420)',
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <span
+                      className={`absolute left-2 top-2 z-[2] rounded-md border px-2 py-0.5 text-[0.72rem] font-semibold ${
+                        isCurrent
+                          ? 'border-transparent bg-spectral text-bg'
+                          : 'border-white/15 bg-black/70 text-white'
+                      }`}
+                    >
+                      E{ep.episode_number}
+                    </span>
+                    <span className="absolute inset-0 z-[1] flex items-center justify-center opacity-0 transition hover:opacity-100">
+                      <span className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-white/30 bg-black/55">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff" className="ml-[1px]">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </span>
+                    </span>
+                  </div>
+                  <p className="mb-0.5 truncate text-[0.87rem] font-semibold">
+                    {ep.name || `Episodio ${ep.episode_number}`}
+                  </p>
+                  <p className="text-[0.78rem] text-dimtext">
+                    {ep.runtime ? `${ep.runtime} min` : 'Episodio'}
+                  </p>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ---------- RECOMENDADOS ---------- */}
+      {recs.length > 0 && (
+        <div className="mt-12">
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="font-display text-[1.25rem] font-bold tracking-tight">
+              También te puede interesar
+            </h2>
+            <div className="hidden gap-2 md:flex">
+              <button
+                onClick={() => scrollRail(recTrackRef, -1)}
+                aria-label="Anterior"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-dimtext transition hover:bg-white/10 hover:text-white"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+              </button>
+              <button
+                onClick={() => scrollRail(recTrackRef, 1)}
+                aria-label="Siguiente"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-dimtext transition hover:bg-white/10 hover:text-white"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div ref={recTrackRef} className="flex gap-4 overflow-x-auto pb-1 no-scrollbar">
+            {recs.map((item) => (
+              <PosterCard key={`${item.media_type}-${item.id}`} item={item} />
+            ))}
+          </div>
         </div>
       )}
     </div>

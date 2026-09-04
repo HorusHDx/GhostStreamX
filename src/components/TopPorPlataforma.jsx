@@ -5,13 +5,12 @@ import { api } from '../api.js'
 const IMG = 'https://image.tmdb.org/t/p/w500'
 const ORDER = ['netflix', 'prime', 'hbo', 'disney', 'apple', 'paramount']
 
-// Fila interactiva "Top por plataforma" con tabs de red, toggle Serie/Película,
-// modo "Más vistas"/"Mejor calificadas" y botón "Ver más".
+// Fila "Top series por plataforma": tabs de red, modo
+// "Más vistas"/"Mejor calificadas" y botón "Ver más".
 export default function TopPorPlataforma() {
   const trackRef = useRef(null)
   const [platforms, setPlatforms] = useState(null)
   const [active, setActive] = useState('netflix')
-  const [tipo, setTipo] = useState('series') // 'series' | 'peliculas'
   const [mode, setMode] = useState('vistas')
 
   const scrollTrack = (dir) =>
@@ -28,18 +27,22 @@ export default function TopPorPlataforma() {
       .catch(() => setPlatforms({}))
   }, [])
 
+  // Al cambiar de plataforma o de modo, volver al inicio del carril.
+  useEffect(() => {
+    trackRef.current?.scrollTo({ left: 0 })
+  }, [active, mode])
+
   if (!platforms) {
     return (
       <div className="mb-12 px-5 md:px-12">
-        <h2 className="mb-4 font-display text-2xl font-bold">Top por plataforma</h2>
+        <h2 className="mb-4 font-display text-2xl font-bold">Top series por plataforma</h2>
         <div className="h-48 animate-pulse rounded-xl bg-surface/60" />
       </div>
     )
   }
 
   const current = platforms[active]
-  const pool = tipo === 'series' ? current?.items || [] : current?.movies || []
-  const items = pool
+  const items = (current?.items || [])
     .slice()
     .sort((a, b) =>
       mode === 'calificacion'
@@ -48,39 +51,17 @@ export default function TopPorPlataforma() {
     )
     .slice(0, 10)
 
-  const verMasTipo =
-    tipo === 'peliculas'
-      ? '?tipo=movie'
-      : tipo === 'series'
-        ? '?tipo=tv'
-        : ''
-
   return (
     <section className="relative z-10 mb-12">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-4 px-5 md:px-12">
-        <h2 className="font-display text-2xl font-bold">Top por plataforma</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="font-display text-2xl font-bold">Top series por plataforma</h2>
+          <span className="rounded-full border border-spectral-dim bg-spectral-dim/20 px-2.5 py-0.5 text-[0.72rem] font-semibold text-spectral">
+            Series
+          </span>
+        </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Toggle Serie/Película */}
-          <div className="flex gap-1 rounded-[20px] border border-white/10 bg-white/5 p-1">
-            {[
-              { id: 'series', label: 'Series' },
-              { id: 'peliculas', label: 'Películas' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTipo(t.id)}
-                className={`rounded-[16px] px-4 py-1.5 text-[0.85rem] transition ${
-                  tipo === t.id
-                    ? 'bg-spectral-dim text-spectral'
-                    : 'text-dimtext hover:text-white'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
           {/* Toggle modo */}
           <div className="flex gap-1 rounded-[20px] border border-white/10 bg-white/5 p-1">
             {[
@@ -104,7 +85,7 @@ export default function TopPorPlataforma() {
           {/* Ver más */}
           {current && (
             <Link
-              to={`/plataforma/${active}${verMasTipo}`}
+              to={`/plataforma/${active}?tipo=tv`}
               className="inline-flex items-center gap-1.5 rounded-full border border-spectral-dim px-4 py-2 text-[0.85rem] font-semibold text-spectral transition hover:bg-spectral-dim"
             >
               Ver más
@@ -166,12 +147,11 @@ export default function TopPorPlataforma() {
         className="flex gap-4 overflow-x-auto px-5 py-1.5 pb-4 no-scrollbar md:gap-2 md:px-12"
       >
         {items.map((item, i) => {
-          const mediaType = item.media_type || (item.title ? 'movie' : 'tv')
           const poster = item.poster_path ? `${IMG}${item.poster_path}` : null
           return (
             <Link
-              key={`${active}-${mediaType}-${item.id}`}
-              to={`/${mediaType}/${item.id}`}
+              key={`${active}-tv-${item.id}`}
+              to={`/tv/${item.id}`}
               className="group flex shrink-0 items-end"
             >
               <span
@@ -190,7 +170,7 @@ export default function TopPorPlataforma() {
                 />
                 <div className="flex flex-wrap gap-1.5">
                   <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[0.72rem] text-dimtext">
-                    {mediaType === 'movie' ? 'Película' : 'Serie'}
+                    Serie
                   </span>
                   {mode === 'calificacion' ? (
                     <span className="rounded-full border border-rating/25 bg-rating/8 px-2 py-0.5 text-[0.72rem] text-rating">
