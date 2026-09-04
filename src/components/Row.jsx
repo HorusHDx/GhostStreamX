@@ -42,7 +42,12 @@ export default function Row({ title, items }) {
         className="flex gap-4 overflow-x-auto px-5 pb-4 no-scrollbar md:px-12"
       >
         {items.map((item) => (
-          <PosterCard key={`${item.media_type}-${item.id}`} item={item} />
+          <div
+            key={`${item.media_type}-${item.id}`}
+            className="w-[150px] shrink-0 md:w-[170px]"
+          >
+            <PosterCard item={item} />
+          </div>
         ))}
       </div>
     </section>
