@@ -1,7 +1,5 @@
 // Cliente de TMDB para metadata.
-// Usa node-fetch (v3, ESM) por compatibilidad serverless.
-import fetch from 'node-fetch'
-
+// Usa el fetch global (Node 18+), también disponible en el runtime serverless de Vercel.
 const API_KEY = process.env.TMDB_API_KEY
 const BASE = 'https://api.themoviedb.org/3'
 const IMG = 'https://image.tmdb.org/t/p'

@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import Hls from 'hls.js'
 
 /**
  * Reproductor universal.
  * - Si `src` es un embed (iframe html), lo renderiza en un iframe (Embeds tipo UnlimPlay/nsrplay).
- * - Si `src` apunta a un .m3u8, usa hls.js.
+ * - Si `src` apunta a un .m3u8, usa hls.js (cargado bajo demanda).
  * - Si `src` es un .mp4 directo, usa el <video> nativo.
  */
 export default function Player({ source }) {
@@ -29,11 +28,15 @@ export default function Player({ source }) {
     if (isM3u8) {
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = src // Safari
-      } else if (Hls.isSupported()) {
-        const h = new Hls()
-        h.loadSource(src)
-        h.attachMedia(video)
-        setHls(h)
+      } else {
+        // Carga hls.js solo cuando hace falta reproducir un .m3u8 directo.
+        import('hls.js').then(({ default: Hls }) => {
+          if (!Hls.isSupported()) return
+          const h = new Hls()
+          h.loadSource(src)
+          h.attachMedia(video)
+          setHls(h)
+        })
       }
     } else if (!isEmbed && src) {
       video.src = src

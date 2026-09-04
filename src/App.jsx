@@ -1,29 +1,37 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar.jsx'
-import Home from './pages/Home.jsx'
-import Search from './pages/Search.jsx'
-import Detail from './pages/Detail.jsx'
-import Watch from './pages/Watch.jsx'
-import Plataforma from './pages/Plataforma.jsx'
+
+// Carga diferida de páginas: el home carga rápido y el resto llega bajo demanda.
+const Home = lazy(() => import('./pages/Home.jsx'))
+const Search = lazy(() => import('./pages/Search.jsx'))
+const Detail = lazy(() => import('./pages/Detail.jsx'))
+const Watch = lazy(() => import('./pages/Watch.jsx'))
+const Plataforma = lazy(() => import('./pages/Plataforma.jsx'))
 
 export default function App() {
   return (
     <div className="flex min-h-screen flex-col bg-bg">
       <Navbar />
-      <div className="flex-1">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/search" element={<Search />} />
-          <Route path="/plataforma/:id" element={<Plataforma />} />
-          <Route path="/movie/:id" element={<Detail type="movie" />} />
-          <Route path="/tv/:id" element={<Detail type="tv" />} />
-          <Route path="/watch/movie/:id" element={<Watch type="movie" />} />
-          <Route
-            path="/watch/tv/:id"
-            element={<Watch type="tv" />}
-          />
-        </Routes>
-      </div>
+      <Suspense
+        fallback={
+          <div className="flex flex-1 items-center justify-center py-32">
+            <span className="font-display text-lg text-dimtext">Cargando…</span>
+          </div>
+        }
+      >
+        <div className="flex-1">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/search" element={<Search />} />
+            <Route path="/plataforma/:id" element={<Plataforma />} />
+            <Route path="/movie/:id" element={<Detail type="movie" />} />
+            <Route path="/tv/:id" element={<Detail type="tv" />} />
+            <Route path="/watch/movie/:id" element={<Watch type="movie" />} />
+            <Route path="/watch/tv/:id" element={<Watch type="tv" />} />
+          </Routes>
+        </div>
+      </Suspense>
 
       {/* Pie de página */}
       <footer className="border-t border-white/10 px-5 py-8 md:px-12">
