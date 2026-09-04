@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api.js'
 
@@ -8,10 +8,14 @@ const ORDER = ['netflix', 'prime', 'hbo', 'disney', 'apple', 'paramount']
 // Fila interactiva "Top por plataforma" con tabs de red, toggle Serie/Película,
 // modo "Más vistas"/"Mejor calificadas" y botón "Ver más".
 export default function TopPorPlataforma() {
+  const trackRef = useRef(null)
   const [platforms, setPlatforms] = useState(null)
   const [active, setActive] = useState('netflix')
   const [tipo, setTipo] = useState('series') // 'series' | 'peliculas'
   const [mode, setMode] = useState('vistas')
+
+  const scrollTrack = (dir) =>
+    trackRef.current?.scrollBy({ left: dir * 420, behavior: 'smooth' })
 
   useEffect(() => {
     api
@@ -109,6 +113,28 @@ export default function TopPorPlataforma() {
               </svg>
             </Link>
           )}
+
+          {/* Flechas de desplazamiento */}
+          <div className="hidden gap-2 md:flex">
+            <button
+              onClick={() => scrollTrack(-1)}
+              aria-label="Anterior"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-dimtext transition hover:bg-white/10 hover:text-white"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </button>
+            <button
+              onClick={() => scrollTrack(1)}
+              aria-label="Siguiente"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-dimtext transition hover:bg-white/10 hover:text-white"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -135,7 +161,10 @@ export default function TopPorPlataforma() {
       </div>
 
       {/* Track */}
-      <div className="flex gap-4 overflow-x-auto px-5 py-1.5 pb-4 no-scrollbar md:gap-2 md:px-12">
+      <div
+        ref={trackRef}
+        className="flex gap-4 overflow-x-auto px-5 py-1.5 pb-4 no-scrollbar md:gap-2 md:px-12"
+      >
         {items.map((item, i) => {
           const mediaType = item.media_type || (item.title ? 'movie' : 'tv')
           const poster = item.poster_path ? `${IMG}${item.poster_path}` : null

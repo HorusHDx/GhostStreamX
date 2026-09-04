@@ -1,11 +1,16 @@
+import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 
 const IMG = 'https://image.tmdb.org/t/p/w500'
 
 // Fila "Top N" con numerales outline (estilo del amigo).
 export default function TopRow({ title, items, type }) {
+  const ref = useRef(null)
   if (!items || items.length === 0) return null
   const list = items.slice(0, 10)
+
+  const scroll = (dir) =>
+    ref.current?.scrollBy({ left: dir * 420, behavior: 'smooth' })
 
   return (
     <section className="relative z-10 mb-12">
@@ -13,9 +18,32 @@ export default function TopRow({ title, items, type }) {
         <h2 className="font-display text-2xl font-bold tracking-tight md:text-[1.4rem]">
           {title}
         </h2>
+        <div className="hidden gap-2 md:flex">
+          <button
+            onClick={() => scroll(-1)}
+            aria-label="Anterior"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-dimtext transition hover:bg-white/10 hover:text-white"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <button
+            onClick={() => scroll(1)}
+            aria-label="Siguiente"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-dimtext transition hover:bg-white/10 hover:text-white"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto px-5 py-1.5 pb-4 no-scrollbar md:gap-2 md:px-12">
+      <div
+        ref={ref}
+        className="flex gap-4 overflow-x-auto px-5 py-1.5 pb-4 no-scrollbar md:gap-2 md:px-12"
+      >
         {list.map((item, i) => {
           const mediaType = type || item.media_type || (item.title ? 'movie' : 'tv')
           const poster = item.poster_path ? `${IMG}${item.poster_path}` : null
