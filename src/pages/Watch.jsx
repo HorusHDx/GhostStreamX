@@ -43,7 +43,7 @@ export default function Watch({ type }) {
   const [error, setError] = useState('')
   const [sources, setSources] = useState([])
   const [selected, setSelected] = useState(null)
-  const [grupo, setGrupo] = useState('S1') // 'S1' UnlimPlay | 'S2' NasriPlay
+  const [grupo, setGrupo] = useState('S1') // 'S1' = SERVER-1 | 'S2' = SERVER-2
   const [resolvingToken, setResolvingToken] = useState(null)
   const [resolveError, setResolveError] = useState('')
   const resolvedRef = useRef({})
@@ -292,13 +292,13 @@ export default function Watch({ type }) {
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <p className="text-[0.85rem] text-dimtext">Resolviendo servidor S2…</p>
+            <p className="text-[0.85rem] text-dimtext">Resolviendo SERVER-2…</p>
           </div>
         ) : effective ? (
           <Player source={effective} />
         ) : (
           <div className="flex aspect-video w-full items-center justify-center px-6 text-center text-[0.9rem] text-dimtext">
-            Sin fuentes en {grupo === 'S2' ? 'S2 · NasriPlay' : 'S1 · UnlimPlay'} para
+            Sin fuentes en {grupo === 'S2' ? 'SERVER-2' : 'SERVER-1'} para
             este título.
           </div>
         )}
@@ -320,8 +320,8 @@ export default function Watch({ type }) {
           {/* Tabs S1 / S2 */}
           <div className="mb-4 flex gap-2">
             {[
-              { id: 'S1', label: 'S1 · UnlimPlay', count: s1Count },
-              { id: 'S2', label: 'S2 · NasriPlay', count: s2Count },
+              { id: 'S1', label: 'SERVER-1', count: s1Count },
+              { id: 'S2', label: 'SERVER-2', count: s2Count },
             ].map((t) => (
               <button
                 key={t.id}
@@ -340,13 +340,13 @@ export default function Watch({ type }) {
           {groupSources.length === 0 ? (
             <div className="mb-6 rounded-[10px] border border-white/10 bg-surface-2 p-4 text-[0.9rem] text-dimtext">
               {grupo === 'S2'
-                ? 'S2 no devolvió fuentes para este título (sin match o sin key configurada).'
-                : 'S1 no devolvió fuentes para este título.'}{' '}
+                ? 'SERVER-2 no devolvió fuentes para este título (sin match o sin key configurada).'
+                : 'SERVER-1 no devolvió fuentes para este título.'}{' '}
               <button
                 onClick={() => switchGrupo(grupo === 'S2' ? 'S1' : 'S2')}
                 className="font-semibold text-spectral hover:underline"
               >
-                Usar {grupo === 'S2' ? 'S1' : 'S2'}
+                Usar {grupo === 'S2' ? 'SERVER-1' : 'SERVER-2'}
               </button>
             </div>
           ) : null}

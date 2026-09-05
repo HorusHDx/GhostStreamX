@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 
 /**
  * Reproductor universal.
- * - Si `src` es un embed (iframe html), lo renderiza en un iframe (Embeds tipo UnlimPlay/nsrplay).
+ * - Si `src` es un embed (iframe html), lo renderiza en un iframe.
  * - Si `src` apunta a un .m3u8, usa hls.js (cargado bajo demanda).
  * - Si `src` es un .mp4 directo, usa el <video> nativo.
  */
