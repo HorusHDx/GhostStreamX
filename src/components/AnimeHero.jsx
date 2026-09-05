@@ -6,6 +6,8 @@ import { Link } from 'react-router-dom'
 
 export default function AnimeHero({ items }) {
   const [current, setCurrent] = useState(0)
+  // Índice de la imagen de fondo en la cadena backdrop → captura → portada.
+  const [bgStep, setBgStep] = useState(0)
 
   useEffect(() => {
     setCurrent(0)
@@ -15,12 +17,33 @@ export default function AnimeHero({ items }) {
     if (!items?.length) return undefined
     const t = setInterval(() => {
       setCurrent((c) => (c + 1) % items.length)
+      setBgStep(0)
     }, 6000)
     return () => clearInterval(t)
   }, [items, current])
 
+  function goToSlide(i) {
+    setCurrent(i)
+    setBgStep(0)
+  }
+
+  // Precarga el primer fondo para que el hero pinte rápido.
+  useEffect(() => {
+    const first = items?.[0]?.backdrop
+    if (first) {
+      const img = new Image()
+      img.src = first
+    }
+  }, [items])
+
   if (!items?.length) return null
   const item = items[current % items.length]
+  const bgSources = [
+    item.backdrop,
+    item.episodes?.[0]?.screenshot,
+    item.poster,
+  ].filter(Boolean)
+  const bg = bgSources[Math.min(bgStep, bgSources.length - 1)]
   const chips = [
     item.type && `${item.type}${item.totalEpisodes ? ` · ${item.totalEpisodes} eps` : ''}`,
     item.year,
@@ -29,16 +52,17 @@ export default function AnimeHero({ items }) {
 
   return (
     <section className="relative h-[78vh] max-h-[720px] min-h-[480px] w-full overflow-hidden">
-      {/* Fondo: gradiente + backdrop real (si falla, queda el gradiente) */}
+      {/* Fondo: gradiente + imagen real con cadena de respaldo
+          (backdrop → captura del ep.1 → portada → gradiente) */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a2233] via-[#0c1420] to-bg" />
-      {item.backdrop && (
+      {bg && bgStep < bgSources.length && (
         <img
-          key={item.backdrop}
-          src={item.backdrop}
+          key={bg}
+          src={bg}
           alt=""
           aria-hidden
-          onError={(e) => {
-            e.currentTarget.style.display = 'none'
+          onError={() => {
+            setBgStep((s) => s + 1)
           }}
           className="absolute inset-0 h-full w-full object-cover"
         />
@@ -104,7 +128,7 @@ export default function AnimeHero({ items }) {
           <button
             key={s.slug}
             aria-label={`Ir a ${s.title}`}
-            onClick={() => setCurrent(i)}
+            onClick={() => goToSlide(i)}
             className={`w-2 rounded transition-all duration-300 ${
               i === current % items.length
                 ? 'h-[26px] bg-spectral shadow-[0_0_10px_rgba(127,231,212,0.35)]'

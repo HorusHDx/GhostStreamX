@@ -57,8 +57,7 @@ function timeAgo(iso) {
   return w === 1 ? 'hace una semana' : `hace ${w} semanas`
 }
 
-function AnimeCard({ item }) {
-  return (
+function AnimeCard({ item }) {  return (
     <Link to={`/anime/${item.slug}`} className="group w-full cursor-pointer">
       <div
         className="mb-2.5 aspect-[2/3] w-full overflow-hidden rounded-[10px] bg-cover bg-center transition-transform duration-200 group-hover:-translate-y-1.5 group-hover:scale-[1.02] group-hover:shadow-[0_16px_30px_rgba(0,0,0,0.5),0_0_0_1px_rgba(127,231,212,0.35)]"
@@ -135,7 +134,6 @@ function LatestCard({ item }) {
             {item.episode}
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-80" />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-black/55">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
@@ -200,6 +198,26 @@ const pill = (active) =>
       ? 'border-spectral-dim bg-spectral-dim/20 text-spectral'
       : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
   }`
+
+// Buscador propio de la sección (visible en Inicio y en Catálogo).
+function SearchForm({ input, setInput, onSubmit }) {
+  return (
+    <form onSubmit={onSubmit} className="mb-5 flex max-w-xl gap-2">
+      <input
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Buscar anime..."
+        className="w-full rounded-[10px] border border-white/10 bg-surface-2 px-4 py-2.5 text-[0.9rem] text-white outline-none transition placeholder:text-dimtext focus:border-spectral-dim"
+      />
+      <button
+        type="submit"
+        className="shrink-0 rounded-[10px] border border-spectral-dim bg-spectral-dim/20 px-5 py-2.5 text-[0.9rem] font-semibold text-spectral transition hover:bg-spectral-dim/30"
+      >
+        Buscar
+      </button>
+    </form>
+  )
+}
 
 export default function Anime() {
   const [params, setParams] = useSearchParams()
@@ -330,6 +348,7 @@ export default function Anime() {
               Catálogo
             </button>
           </div>
+          <SearchForm input={input} setInput={setInput} onSubmit={submit} />
         </div>
 
         {heroItems.length > 0 && <AnimeHero items={heroItems} />}
@@ -414,20 +433,7 @@ export default function Anime() {
       </div>
 
       {/* Buscador propio */}
-      <form onSubmit={submit} className="mb-5 flex max-w-xl gap-2">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Buscar anime..."
-          className="w-full rounded-[10px] border border-white/10 bg-surface-2 px-4 py-2.5 text-[0.9rem] text-white outline-none transition placeholder:text-dimtext focus:border-spectral-dim"
-        />
-        <button
-          type="submit"
-          className="shrink-0 rounded-[10px] border border-spectral-dim bg-spectral-dim/20 px-5 py-2.5 text-[0.9rem] font-semibold text-spectral transition hover:bg-spectral-dim/30"
-        >
-          Buscar
-        </button>
-      </form>
+      <SearchForm input={input} setInput={setInput} onSubmit={submit} />
 
       {/* Géneros (solo sin búsqueda activa) */}
       {!q && (
