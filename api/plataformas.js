@@ -10,7 +10,3 @@ export const PLATAFORMAS = {
   apple: { id: 2552, name: 'Apple TV+', color: '#C7CBD4' },
   paramount: { id: 158, name: 'Paramount+', color: '#5BA8D6' },
 }
-
-export const PLATAFORMAS_BY_ID = Object.fromEntries(
-  Object.entries(PLATAFORMAS).map(([key, v]) => [v.id, { key, ...v }])
-)

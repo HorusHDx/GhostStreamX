@@ -4,7 +4,19 @@ const API_KEY = process.env.TMDB_API_KEY
 const BASE = 'https://api.themoviedb.org/3'
 const IMG = 'https://image.tmdb.org/t/p'
 
-let memo = {}
+let memo = new Map()
+
+function memoGet(key, ttl) {
+  const e = memo.get(key)
+  if (e && Date.now() - e.t < ttl) return e.data
+  memo.delete(key)
+  return undefined
+}
+
+function memoSet(key, data) {
+  if (memo.size > 500) memo.clear()
+  memo.set(key, { t: Date.now(), data })
+}
 
 async function call(path, params = {}) {
   if (!API_KEY) throw new Error('Falta TMDB_API_KEY en las variables de entorno')
@@ -17,9 +29,8 @@ async function call(path, params = {}) {
   }
 
   const key = url.toString()
-  if (memo[key] && Date.now() - memo[key].t < 5 * 60 * 1000) {
-    return memo[key].data
-  }
+  const cached = memoGet(key, 5 * 60 * 1000)
+  if (cached !== undefined) return cached
 
   const res = await fetch(url, {
     headers: { accept: 'application/json' },
@@ -29,7 +40,7 @@ async function call(path, params = {}) {
     throw new Error(`TMDB ${res.status}: ${text.slice(0, 200)}`)
   }
   const data = await res.json()
-  memo[key] = { t: Date.now(), data }
+  memoSet(key, data)
   return data
 }
 
@@ -50,8 +61,6 @@ function trimList(obj, itemsKey = 'results') {
 }
 
 export const tmdb = {
-  fromId: (id) => id,
-
   movie: (id) => call(`/movie/${id}`),
   tv: (id) => call(`/tv/${id}`),
   tvSeason: (id, season) => call(`/tv/${id}/season/${season}`),

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { api } from '../api.js'
 import Player from '../components/Player.jsx'
@@ -45,7 +45,9 @@ export default function Watch({ type }) {
   const [selected, setSelected] = useState(null)
   const [grupo, setGrupo] = useState('S1') // 'S1' UnlimPlay | 'S2' NasriPlay
   const [resolvingToken, setResolvingToken] = useState(null)
+  const [resolveError, setResolveError] = useState('')
   const resolvedRef = useRef({})
+  const pickIdRef = useRef(0)
   const [meta, setMeta] = useState({})
   const [seasons, setSeasons] = useState([])
   const [seasonNum, setSeasonNum] = useState(Number(seasonParam) || 1)
@@ -57,6 +59,46 @@ export default function Watch({ type }) {
   const scrollRail = (ref, dir) =>
     ref.current?.scrollBy({ left: dir * 420, behavior: 'smooth' })
 
+  // Elige una fuente; las S2 pendientes (server+token) se resuelven
+  // bajo demanda contra /watch/nsr/resolve (con cache en memoria).
+  // Guarda el error para mostrarlo en vez de quedarse en silencio.
+  const pickSource = useCallback(async (s) => {
+    if (!s) return
+    setResolveError('')
+    if (!s.needsResolve) {
+      setSelected(s)
+      return
+    }
+    const cacheKey = `${s.server}::${s.token}`
+    const hit = resolvedRef.current[cacheKey]
+    if (hit) {
+      setSelected({ ...s, url: hit.url, kind: hit.kind, needsResolve: false })
+      return
+    }
+    const myId = ++pickIdRef.current
+    setSelected({ ...s })
+    setResolvingToken(s.token)
+    try {
+      const d = await api.nsrResolve(s.server, s.token)
+      if (d && d.url) {
+        resolvedRef.current[cacheKey] = { url: d.url, kind: d.kind || 'embed' }
+        if (pickIdRef.current === myId) {
+          setSelected({ ...s, url: d.url, kind: d.kind || 'embed', needsResolve: false })
+        }
+      } else if (pickIdRef.current === myId) {
+        setResolveError(`El servidor “${s.server}” no devolvió video. Probá con otro servidor.`)
+      }
+    } catch (e) {
+      if (pickIdRef.current === myId) {
+        setResolveError(
+          `No se pudo resolver “${s.server}”: ${e.message || 'error de red'}. Probá con otro servidor.`
+        )
+      }
+    } finally {
+      setResolvingToken((t) => (t === s.token ? null : t))
+    }
+  }, [])
+
   // Mantiene la temporada del selector sincronizada con la URL.
   useEffect(() => {
     if (seasonParam) setSeasonNum(Number(seasonParam))
@@ -65,6 +107,7 @@ export default function Watch({ type }) {
   useEffect(() => {
     setLoading(true)
     setError('')
+    setResolveError('')
     setSources([])
     setSelected(null)
     setMeta({})
@@ -93,10 +136,11 @@ export default function Watch({ type }) {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
 
-    // Metadata completa para el encabezado y "Continuar viendo".
+    // Metadata completa para el encabezado y "Continuar viendo",
+    // + temporadas (una sola llamada para series, antes eran dos).
     const metaP = type === 'movie' ? api.movie(id) : api.tv(id)
     metaP
-      .then((d) =>
+      .then((d) => {
         setMeta({
           title: d.title || d.name,
           overview: d.overview,
@@ -105,14 +149,11 @@ export default function Watch({ type }) {
           runtime: d.runtime || (d.episode_run_time && d.episode_run_time[0]),
           poster: d.poster_path,
         })
-      )
+        if (type === 'tv') {
+          setSeasons((d.seasons || []).filter((s) => s.season_number > 0))
+        }
+      })
       .catch(() => {})
-    if (type === 'tv') {
-      api
-        .tv(id)
-        .then((d) => setSeasons((d.seasons || []).filter((s) => s.season_number > 0)))
-        .catch(() => {})
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, id, seasonParam, episodeParam])
 
@@ -150,40 +191,9 @@ export default function Watch({ type }) {
   )
   const switchGrupo = (g) => {
     setGrupo(g)
+    setResolveError('')
     const first = sources.find((s) => (s.group || 'S1') === g)
     if (first) pickSource(first)
-  }
-
-  // Elige una fuente; las S2 pendientes (name+token) se resuelven
-  // bajo demanda contra /watch/nsr/resolve (con cache en memoria).
-  const pickSource = async (s) => {
-    if (!s) return
-    if (!s.needsResolve) {
-      setSelected(s)
-      return
-    }
-    const hit = resolvedRef.current[s.token]
-    if (hit) {
-      setSelected({ ...s, url: hit.url, kind: hit.kind, needsResolve: false })
-      return
-    }
-    setSelected({ ...s })
-    setResolvingToken(s.token)
-    try {
-      const d = await api.nsrResolve(s.server, s.token)
-      if (d && d.url) {
-        resolvedRef.current[s.token] = { url: d.url, kind: d.kind || 'embed' }
-        setSelected((prev) =>
-          prev && prev.token === s.token
-            ? { ...s, url: d.url, kind: d.kind || 'embed', needsResolve: false }
-            : prev
-        )
-      }
-    } catch {
-      /* sin URL: el aviso del grupo + placeholder lo explican */
-    } finally {
-      setResolvingToken((t) => (t === s.token ? null : t))
-    }
   }
 
   const byLanguage = useMemo(() => {
@@ -245,6 +255,12 @@ export default function Watch({ type }) {
       {error && (
         <div className="mb-5 rounded-[10px] border border-red-900 bg-red-950/40 p-4 text-red-300">
           {error}
+        </div>
+      )}
+
+      {resolveError && !loading && (
+        <div className="mb-5 rounded-[10px] border border-yellow-900 bg-yellow-950/40 p-4 text-yellow-200">
+          {resolveError}
         </div>
       )}
 
@@ -373,8 +389,8 @@ export default function Watch({ type }) {
                   }}
                   className="w-full cursor-pointer appearance-none bg-transparent pr-6 font-sans text-[0.9rem] text-white outline-none [&>option]:bg-surface-2"
                 >
-                  {(byLanguage.get(activeSelected?.language) || []).map((s) => (
-                    <option key={s.token || s.url} value={s.token || s.url}>
+                  {(byLanguage.get(activeSelected?.language || 'server') || []).map((s, i) => (
+                    <option key={`${s.server || s.name}-${s.token || s.url}-${i}`} value={s.token || s.url}>
                       {s.name}
                     </option>
                   ))}

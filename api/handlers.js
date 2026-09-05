@@ -1,6 +1,7 @@
 // Handlers de la API (funciones puras, reutilizables en Express y serverless).
 import { tmdb } from './tmdb.js'
 import { resolveSources } from './sources.js'
+import { resolveNsrToken } from './nsrplay.js'
 import { PLATAFORMAS } from './plataformas.js'
 
 // Home: varias filas de contenido
@@ -10,16 +11,14 @@ import { PLATAFORMAS } from './plataformas.js'
 export async function handleHome(req, res) {
   try {
     const [
-      heroMovies,
-      topMovies,
+      trendingMovies,
       topTv,
       actionTv,
       comedyTv,
       scifiTv,
       mysteryTv,
     ] = await Promise.allSettled([
-      tmdb.topMoviesToday(),                  // para el hero slider
-      tmdb.topMoviesToday(),                  // top películas hoy
+      tmdb.topMoviesToday(),                  // hero + top pelis (una sola llamada)
       tmdb.topTvToday(),                      // top series hoy
       tmdb.discoverByGenre(10759, 'tv'),      // acción y aventura
       tmdb.discoverByGenre(35, 'tv'),         // comedia
@@ -28,12 +27,13 @@ export async function handleHome(req, res) {
     ])
 
     const val = (r) => (r.status === 'fulfilled' ? r.value : [])
-    const hero = val(heroMovies).slice(0, 10)
+    const movies = val(trendingMovies)
+    const hero = movies.slice(0, 10)
 
     res.json({
       hero,
       sections: [
-        { title: 'Top películas hoy', items: val(topMovies), top: true, type: 'movie' },
+        { title: 'Top películas hoy', items: movies, top: true, type: 'movie' },
         { title: 'Top series hoy', items: val(topTv), top: true, type: 'tv' },
         { title: 'Acción y Aventura', items: val(actionTv) },
         { title: 'Comedia', items: val(comedyTv) },
@@ -155,7 +155,6 @@ export async function handleNsrResolve(req, res) {
     if (!server || !token) {
       return res.status(400).json({ error: 'Faltan server y token' })
     }
-    const { resolveNsrToken } = await import('./nsrplay.js')
     const r = await resolveNsrToken(server, token)
     if (!r || !r.url) {
       return res.status(404).json({ error: 'No se pudo resolver el servidor' })

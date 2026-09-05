@@ -292,7 +292,8 @@ async function resolveEmbedServer(s) {
 }
 
 // Resolve bajo demanda (lo llama el front al elegir servidor S2).
-// Cacheado: el token se resuelve una vez cada 10min.
+// Solo se cachean los resolves exitosos: un fallo (token expirado, 429,
+// timeout) NO se cachea para que reintentar pueda funcionar.
 export async function resolveNsrToken(server, token) {
   if (!server || !token) return null
   const ck = `nsr:tok:${server}:${token}`
@@ -300,7 +301,7 @@ export async function resolveNsrToken(server, token) {
   if (cached !== undefined) return cached
   const out = await resolveEmbedServer({ name: server, token })
   const first = out[0] || null
-  setMemo(ck, first)
+  if (first) setMemo(ck, first)
   return first
 }
 

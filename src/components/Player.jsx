@@ -13,7 +13,7 @@ export default function Player({ source }) {
 
   // Normaliza: acepta `url` (nueva estructura) o `src` (estructura antigua).
   const src = source?.url || source?.src
-  const kind = source?.kind === 'direct' && src?.includes('.m3u8') ? 'direct' : source?.kind
+  const kind = source?.kind || 'embed'
 
   useEffect(() => {
     if (!source) return
@@ -31,7 +31,7 @@ export default function Player({ source }) {
     }
 
     const isM3u8 = src?.includes('.m3u8')
-    const isEmbed = kind === 'embed' || (src && src.startsWith('http') === false)
+    const isEmbed = kind === 'embed'
 
     if (isM3u8) {
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -95,6 +95,7 @@ export default function Player({ source }) {
     return (
       <div className="relative aspect-video w-full overflow-hidden bg-black">
         <iframe
+          key={src}
           src={src}
           className="absolute inset-0 h-full w-full"
           allowFullScreen
