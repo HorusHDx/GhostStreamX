@@ -18,6 +18,10 @@ const TTL_INFO = 60 * 60 * 1000 // 1h: la ficha es estable
 const TTL_EPISODE = 10 * 60 * 1000 // 10min: absorbe re-clics sin recargar al origen
 const TTL_GENRES = 24 * 60 * 60 * 1000 // 24h: el mapa de géneros casi no cambia
 const TTL_LATEST = 15 * 60 * 1000 // 15min: novedades frescas sin acribillar al origen
+const TTL_TOP = 6 * 60 * 60 * 1000 // 6h: el ranking por puntaje casi no se mueve
+
+// Órdenes aceptados por /catalogo (verificados: otros valores se ignoran).
+const VALID_ORDERS = new Set(['default', 'score', 'popular'])
 
 const memo = new Map() // key -> { t, data }
 
@@ -230,11 +234,12 @@ function mapCatalogItem(r) {
   }
 }
 
-async function catalogJson({ page, genre, search }) {
+async function catalogJson({ page, genre, search, order }) {
   const q = new URLSearchParams()
   if (page > 1) q.set('page', String(page))
   if (genre) q.set('genre', genre)
   if (search) q.set('search', search)
+  if (order && VALID_ORDERS.has(order) && order !== 'default') q.set('order', order)
   const data = await fetchPageData('/catalogo', q.toString())
   const root = resolveDevalue(data)
   if (!root || !Array.isArray(root.results)) throw new Error('AnimeAV1 json sin resultados')
@@ -282,19 +287,21 @@ async function catalogHtml({ page, genre, search }, qs) {
   return { items, page, hasMore }
 }
 
-export async function animeCatalog({ page = 1, genre = '', search = '' } = {}) {
+export async function animeCatalog({ page = 1, genre = '', search = '', order = '' } = {}) {
   const p = Math.min(Math.max(parseInt(page, 10) || 1, 1), 50)
+  const ord = VALID_ORDERS.has(order) ? order : ''
   const q = new URLSearchParams()
   if (p > 1) q.set('page', String(p))
   if (genre) q.set('genre', genre)
   if (search) q.set('search', search)
+  if (ord) q.set('order', ord)
   const qs = q.toString()
   const key = `anime:catalog:${qs || 'p1'}`
   const hit = getMemo(key, TTL_CATALOG)
   if (hit) return hit
   let data
   try {
-    data = await catalogJson({ page: p, genre, search })
+    data = await catalogJson({ page: p, genre, search, order: ord })
   } catch {
     data = await catalogHtml({ page: p, genre, search }, qs) // fallback HTML
   }
@@ -567,8 +574,36 @@ export async function animeLatest(limit = 24) {
       title: a.title || a.slug,
       cover: coverOf(a.id),
       type: a.category?.name || null,
+      addedAt: a.createdAt || null,
     }))
   const out = { items, recent }
+  setMemo(key, out)
+  return out
+}
+
+// ---------- Top por puntaje (orden score del sitio + ficha para rating) ----------
+
+export async function animeTop(limit = 10) {
+  const n = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 20)
+  const key = `anime:top:${n}`
+  const hit = getMemo(key, TTL_TOP)
+  if (hit) return hit
+  const { items } = await animeCatalog({ order: 'score' })
+  const tops = items.slice(0, n)
+  const infos = await Promise.allSettled(tops.map((t) => animeInfo(t.slug)))
+  const out = {
+    items: tops.map((t, i) => {
+      const info = infos[i].status === 'fulfilled' ? infos[i].value : null
+      return {
+        slug: t.slug,
+        title: t.title,
+        cover: info?.poster || t.cover,
+        type: info?.type || t.type,
+        score: info?.rating || null,
+        totalEpisodes: info?.totalEpisodes || 0,
+      }
+    }),
+  }
   setMemo(key, out)
   return out
 }
@@ -585,8 +620,8 @@ function sendError(res, e) {
 
 export async function handleAnimeCatalog(req, res) {
   try {
-    const { page = '1', genre = '', search = '' } = req.query
-    res.json(await animeCatalog({ page, genre, search }))
+    const { page = '1', genre = '', search = '', order = '' } = req.query
+    res.json(await animeCatalog({ page, genre, search, order }))
   } catch (e) {
     sendError(res, e)
   }
@@ -631,6 +666,15 @@ export async function handleAnimeLatest(req, res) {
   try {
     const limit = parseInt(req.query.limit, 10) || 24
     res.json(await animeLatest(limit))
+  } catch (e) {
+    sendError(res, e)
+  }
+}
+
+export async function handleAnimeTop(req, res) {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 10
+    res.json(await animeTop(limit))
   } catch (e) {
     sendError(res, e)
   }

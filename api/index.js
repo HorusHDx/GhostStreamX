@@ -30,6 +30,7 @@ import {
   handleAnimeSearch,
   handleAnimeGenres,
   handleAnimeLatest,
+  handleAnimeTop,
   handleAnimeInfo,
   handleAnimeEpisode,
 } from './anime.js'
@@ -62,6 +63,7 @@ api.get('/anime/catalog', handleAnimeCatalog)
 api.get('/anime/search', handleAnimeSearch)
 api.get('/anime/genres', handleAnimeGenres)
 api.get('/anime/latest', handleAnimeLatest)
+api.get('/anime/top', handleAnimeTop)
 api.get('/anime/info/:slug', handleAnimeInfo)
 api.get('/anime/episode/:slug/:n', handleAnimeEpisode)
 api.get('/health', (_req, res) => res.json({ ok: true }))

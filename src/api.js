@@ -46,6 +46,7 @@ export const api = {
     search: (q) => get(`/anime/search?q=${encodeURIComponent(q)}`),
     genres: () => get('/anime/genres'),
     latest: () => get('/anime/latest'),
+    top: () => get('/anime/top'),
     info: (slug) => get(`/anime/info/${encodeURIComponent(slug)}`),
     episode: (slug, n) => get(`/anime/episode/${encodeURIComponent(slug)}/${n}`),
   },
