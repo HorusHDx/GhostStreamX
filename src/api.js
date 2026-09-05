@@ -38,4 +38,13 @@ export const api = {
   // Resuelve un servidor S2 (bajo demanda al elegirlo)
   nsrResolve: (server, token) =>
     get(`/watch/nsr/resolve?server=${encodeURIComponent(server)}&token=${encodeURIComponent(token)}`),
+
+  // Sección Anime (aislada, fuente AnimeAV1)
+  anime: {
+    catalog: (page = 1, genre = '') =>
+      get(`/anime/catalog?page=${page}${genre ? `&genre=${encodeURIComponent(genre)}` : ''}`),
+    search: (q) => get(`/anime/search?q=${encodeURIComponent(q)}`),
+    info: (slug) => get(`/anime/info/${encodeURIComponent(slug)}`),
+    episode: (slug, n) => get(`/anime/episode/${encodeURIComponent(slug)}/${n}`),
+  },
 }

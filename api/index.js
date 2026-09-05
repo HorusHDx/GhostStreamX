@@ -25,6 +25,13 @@ import {
   handleWatchEpisode,
 } from './handlers.js'
 
+import {
+  handleAnimeCatalog,
+  handleAnimeSearch,
+  handleAnimeInfo,
+  handleAnimeEpisode,
+} from './anime.js'
+
 const app = express()
 app.use(cors())
 app.use(express.json())
@@ -46,6 +53,11 @@ api.get('/tv/:id/recommendations', handleTvRecs)
 api.get('/watch/movie/:id', handleWatchMovie)
 api.get('/watch/tv/:id/:season/:episode', handleWatchEpisode)
 api.get('/watch/nsr/resolve', handleNsrResolve)
+// Sección Anime (aislada): scraping server-side de AnimeAV1.
+api.get('/anime/catalog', handleAnimeCatalog)
+api.get('/anime/search', handleAnimeSearch)
+api.get('/anime/info/:slug', handleAnimeInfo)
+api.get('/anime/episode/:slug/:n', handleAnimeEpisode)
 api.get('/health', (_req, res) => res.json({ ok: true }))
 
 // Montamos bajo `/api`. Si Vercel le pasa la ruta ya sin el prefijo

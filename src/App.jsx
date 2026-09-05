@@ -9,6 +9,10 @@ const Detail = lazy(() => import('./pages/Detail.jsx'))
 const Watch = lazy(() => import('./pages/Watch.jsx'))
 const Plataforma = lazy(() => import('./pages/Plataforma.jsx'))
 const Historial = lazy(() => import('./pages/Historial.jsx'))
+// Sección Anime (aislada): catálogo, ficha y reproductor propios.
+const Anime = lazy(() => import('./pages/Anime.jsx'))
+const AnimeDetail = lazy(() => import('./pages/AnimeDetail.jsx'))
+const AnimeWatch = lazy(() => import('./pages/AnimeWatch.jsx'))
 
 export default function App() {
   return (
@@ -31,6 +35,9 @@ export default function App() {
             <Route path="/tv/:id" element={<Detail type="tv" />} />
             <Route path="/watch/movie/:id" element={<Watch type="movie" />} />
             <Route path="/watch/tv/:id" element={<Watch type="tv" />} />
+            <Route path="/anime" element={<Anime />} />
+            <Route path="/anime/:slug" element={<AnimeDetail />} />
+            <Route path="/anime/:slug/:ep" element={<AnimeWatch />} />
           </Routes>
         </div>
       </Suspense>

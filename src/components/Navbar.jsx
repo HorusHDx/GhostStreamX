@@ -7,6 +7,7 @@ const MENU = [
   { label: 'Series', to: { pathname: '/', hash: '#top-series' } },
   { label: 'Películas', to: { pathname: '/', hash: '#top-peliculas' } },
   { label: 'Géneros', to: { pathname: '/', hash: '#generos' } },
+  { label: 'Anime', to: '/anime' },
   { label: 'Historial', to: '/historial' },
 ]
 
