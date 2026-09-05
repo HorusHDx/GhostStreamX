@@ -173,6 +173,51 @@ function cleanServers(list) {
   return out
 }
 
+// Verifica si una URL de embed permite <iframe> desde NUESTRA web (HEAD +
+// headers). Ojo: se hace SIN Referer de AnimeAV1 a propósito — algunos hosts
+// (ej. Zilla/HLS) responden 200 solo con referer animeav1.com y 403 al resto,
+// así que simular nuestro contexto real es lo que detecta el bloqueo.
+// 'ok' = sin bloqueo detectable, 'blocked' = 403/X-Frame-Options DENY,
+// SAMEORIGIN o frame-ancestors restrictivo, 'unknown' = no concluyente.
+async function framingStatus(url) {
+  try {
+    const res = await fetch(url, {
+      method: 'HEAD',
+      headers: { 'User-Agent': UA, Accept: '*/*' },
+      signal: AbortSignal.timeout(5000),
+      redirect: 'follow',
+    })
+    if (res.status === 405 || res.status === 501) return 'unknown'
+    if (res.status >= 400) return res.status === 403 ? 'blocked' : 'unknown'
+    const xfo = (res.headers.get('x-frame-options') || '').toLowerCase()
+    if (xfo.includes('deny') || xfo.includes('sameorigin')) return 'blocked'
+    const csp = (res.headers.get('content-security-policy') || '').toLowerCase()
+    for (const part of csp.split(';')) {
+      const p = part.trim()
+      if (p.startsWith('frame-ancestors')) {
+        const v = p.slice('frame-ancestors'.length).trim()
+        if (v && !v.includes('*') && !v.includes('http:') && !v.includes('https:')) {
+          return 'blocked'
+        }
+      }
+    }
+    return 'ok'
+  } catch {
+    return 'unknown'
+  }
+}
+
+const FRAME_RANK = { ok: 0, unknown: 1, blocked: 2 }
+
+// Clasifica en paralelo y ordena: reproducibles primero, bloqueados al final.
+// Todos quedan listados (el usuario puede forzar cualquiera o abrirlo externo).
+async function rankServers(servers) {
+  const flags = await Promise.all(servers.map((s) => framingStatus(s.url)))
+  return servers
+    .map((s, i) => ({ ...s, frame: flags[i] }))
+    .sort((a, b) => FRAME_RANK[a.frame] - FRAME_RANK[b.frame])
+}
+
 // ---------- Catálogo / búsqueda ----------
 
 function mapCatalogItem(r) {
@@ -383,11 +428,11 @@ export async function animeInfo(slug) {
 
 // ---------- Episodio (servidores embed) ----------
 
-function mapEpisode(root, slug, num) {
+async function mapEpisode(root, slug, num) {
   const media = root?.media || {}
   const variants = {}
   for (const v of ['SUB', 'DUB']) {
-    const servers = cleanServers(root?.embeds?.[v])
+    const servers = await rankServers(cleanServers(root?.embeds?.[v]))
     if (servers.length) variants[v] = servers
   }
   if (!Object.keys(variants).length) throw new Error('Episodio sin servidores')
@@ -428,8 +473,8 @@ async function episodeHtml(slug, num) {
       while ((srvM = sRe.exec(vM[2])) !== null) {
         servers.push({ server: srvM[1], url: srvM[2] })
       }
-      const clean = cleanServers(servers)
-      if (clean.length) variants[vM[1]] = clean
+      const ranked = await rankServers(cleanServers(servers))
+      if (ranked.length) variants[vM[1]] = ranked
     }
   }
   if (!Object.keys(variants).length) throw new Error('Episodio sin servidores')
@@ -514,7 +559,16 @@ export async function animeLatest(limit = 24) {
       screenshot: shotOf(e.media.id, Number(e.number)),
       publishedAt: e.publishedAt || null,
     }))
-  const out = { items }
+  const recent = (Array.isArray(root?.latestMedia) ? root.latestMedia : [])
+    .filter((a) => a?.slug)
+    .slice(0, 12)
+    .map((a) => ({
+      slug: a.slug,
+      title: a.title || a.slug,
+      cover: coverOf(a.id),
+      type: a.category?.name || null,
+    }))
+  const out = { items, recent }
   setMemo(key, out)
   return out
 }

@@ -12,7 +12,8 @@ export default function AnimePlayer({ servers, title }) {
   }, [servers])
 
   if (!servers?.length) return null
-  const current = servers[Math.min(idx, servers.length - 1)]
+  const active = Math.min(idx, servers.length - 1)
+  const current = servers[active]
 
   return (
     <div>
@@ -27,25 +28,39 @@ export default function AnimePlayer({ servers, title }) {
         />
       </div>
 
-      {servers.length > 1 && (
-        <div className="mt-4">
-          <p className="mb-2 text-[0.75rem] text-dimtext">Servidor</p>
-          <div className="flex flex-wrap gap-2">
-            {servers.map((s, i) => (
-              <button
-                key={`${s.server}-${i}`}
-                onClick={() => setIdx(i)}
-                className={`rounded-full border px-4 py-1.5 text-[0.82rem] font-semibold transition ${
-                  i === Math.min(idx, servers.length - 1)
-                    ? 'border-spectral-dim bg-spectral-dim/20 text-spectral'
-                    : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
-                }`}
-              >
-                {s.server}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Acciones: cambiar servidor o abrirlo en pestaña nueva */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {servers.map((s, i) => (
+          <button
+            key={`${s.server}-${i}`}
+            onClick={() => setIdx(i)}
+            title={s.frame === 'blocked' ? 'Este servidor suele bloquear el reproductor embebido' : s.server}
+            className={`rounded-full border px-4 py-1.5 text-[0.82rem] font-semibold transition ${
+              i === active
+                ? 'border-spectral-dim bg-spectral-dim/20 text-spectral'
+                : s.frame === 'blocked'
+                  ? 'border-red-400/20 bg-white/5 text-dimtext/60 hover:text-white'
+                  : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
+            }`}
+          >
+            {s.server}
+          </button>
+        ))}
+        <a
+          href={current.url}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[0.82rem] font-semibold text-dimtext transition hover:text-white"
+        >
+          Abrir externo ↗
+        </a>
+      </div>
+
+      {current.frame === 'blocked' && (
+        <p className="mt-3 rounded-[10px] border border-yellow-400/20 bg-yellow-400/10 p-3 text-[0.85rem] text-yellow-200/90">
+          {current.server} bloquea la reproducción embebida. Probá con otro
+          servidor de la lista o abrilo en pestaña nueva.
+        </p>
       )}
     </div>
   )

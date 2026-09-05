@@ -83,7 +83,7 @@ export default function AnimeDetail() {
                 {info.genres.map((g) => (
                   <Link
                     key={g.slug}
-                    to={`/anime?genre=${g.slug}`}
+                    to={`/anime?tab=catalogo&genre=${g.slug}`}
                     className="rounded-full border border-white/10 bg-white/5 px-3.5 py-1 text-[0.8rem] font-semibold text-dimtext transition hover:text-white"
                   >
                     {g.label}

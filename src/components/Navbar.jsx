@@ -37,6 +37,10 @@ export default function Navbar() {
 
   const goTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 
+  // La sección Anime tiene buscador propio: en /anime* se oculta el global
+  // con `invisible` (ocupa el mismo espacio, el menú no se corre).
+  const hideSearch = location.pathname.startsWith('/anime')
+
   return (
     <header
       className={`fixed left-0 right-0 top-0 z-[100] flex items-center justify-between px-5 py-5 transition-all duration-300 md:px-12 ${
@@ -62,7 +66,10 @@ export default function Navbar() {
 
       <form
         onSubmit={submit}
-        className="ml-3 flex min-w-0 max-w-[220px] flex-1 items-center gap-2.5 rounded-[20px] border border-white/10 bg-white/5 px-3.5 py-2 text-[0.88rem] text-dimtext transition focus-within:border-spectral-dim focus-within:bg-white/10 md:ml-0 md:max-w-none md:flex-none md:min-w-[200px]"
+        aria-hidden={hideSearch}
+        className={`ml-3 flex min-w-0 max-w-[220px] flex-1 items-center gap-2.5 rounded-[20px] border border-white/10 bg-white/5 px-3.5 py-2 text-[0.88rem] text-dimtext transition focus-within:border-spectral-dim focus-within:bg-white/10 md:ml-0 md:max-w-none md:flex-none md:min-w-[200px] ${
+          hideSearch ? 'invisible' : ''
+        }`}
       >
         <svg
           width="15"
