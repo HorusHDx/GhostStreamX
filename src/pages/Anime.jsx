@@ -5,8 +5,8 @@ import { api } from '../api.js'
 // Sección Anime (aislada): catálogo + buscador + géneros propios (fuente AnimeAV1).
 // No usa TMDB ni los componentes del flujo pelis/series.
 
-const GENRES = [
-  { slug: '', label: 'Todos' },
+// Géneros de respaldo si /anime/genres falla (el mapa real viene de la API).
+const FALLBACK_GENRES = [
   { slug: 'accion', label: 'Acción' },
   { slug: 'aventura', label: 'Aventura' },
   { slug: 'comedia', label: 'Comedia' },
@@ -52,10 +52,26 @@ export default function Anime() {
   const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [genres, setGenres] = useState(FALLBACK_GENRES)
+  const [latest, setLatest] = useState([])
 
   useEffect(() => {
     setInput(q)
   }, [q])
+
+  // Géneros dinámicos + últimos episodios (una sola vez; si fallan, hay respaldo).
+  useEffect(() => {
+    api.anime
+      .genres()
+      .then((d) => {
+        if (d.genres?.length) setGenres(d.genres)
+      })
+      .catch(() => {})
+    api.anime
+      .latest()
+      .then((d) => setLatest(d.items || []))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -113,10 +129,10 @@ export default function Anime() {
         </button>
       </form>
 
-      {/* Géneros (solo sin búsqueda activa) */}
+      {/* Géneros dinámicos (solo sin búsqueda activa) */}
       {!q && (
         <div className="mb-6 flex flex-wrap gap-2">
-          {GENRES.map((g) => (
+          {[{ slug: '', label: 'Todos' }, ...genres].map((g) => (
             <button
               key={g.slug || 'all'}
               onClick={() => setGenre(g.slug)}
@@ -129,6 +145,42 @@ export default function Anime() {
               {g.label}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Últimos episodios (vista principal sin filtros) */}
+      {!q && !genre && page === 1 && latest.length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-3 font-display text-[1.15rem] font-bold">
+            Últimos episodios
+          </h2>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {latest.map((l) => (
+              <Link
+                key={`${l.slug}-${l.episode}`}
+                to={`/anime/${l.slug}/${l.episode}`}
+                className="group w-44 shrink-0 overflow-hidden rounded-[10px] border border-white/10 bg-surface-2 transition hover:border-spectral/30"
+              >
+                {l.screenshot ? (
+                  <img
+                    src={l.screenshot}
+                    alt={`${l.title} ${l.episode}`}
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                    className="aspect-video w-full object-cover"
+                  />
+                ) : null}
+                <div className="px-3 py-2">
+                  <p className="truncate text-[0.82rem] font-semibold text-dimtext transition group-hover:text-white">
+                    {l.title}
+                  </p>
+                  <p className="text-xs text-dimtext/70">Episodio {l.episode}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

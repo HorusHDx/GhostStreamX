@@ -58,6 +58,9 @@ export default function AnimeDetail() {
             <img
               src={info.poster}
               alt={info.title}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
               className="w-44 shrink-0 rounded-[12px] shadow-[0_16px_40px_rgba(0,0,0,0.6)] max-md:w-32"
             />
           )}
@@ -118,6 +121,9 @@ export default function AnimeDetail() {
                       src={ep.screenshot}
                       alt={`Episodio ${ep.number}`}
                       loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
                       className="aspect-video w-full object-cover"
                     />
                   ) : (
@@ -133,8 +139,9 @@ export default function AnimeDetail() {
             </div>
             {info.episodeListTruncated && (
               <p className="mt-4 text-[0.85rem] text-dimtext">
-                Mostrando los primeros 50. En el reproductor podés avanzar con
-                Anterior/Siguiente o saltar a cualquier número de episodio.
+                Mostrando los primeros {info.episodes.length} de {info.totalEpisodes}.
+                En el reproductor podés avanzar con Anterior/Siguiente o saltar a
+                cualquier número de episodio.
               </p>
             )}
           </>

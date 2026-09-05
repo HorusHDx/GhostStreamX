@@ -44,6 +44,8 @@ export const api = {
     catalog: (page = 1, genre = '') =>
       get(`/anime/catalog?page=${page}${genre ? `&genre=${encodeURIComponent(genre)}` : ''}`),
     search: (q) => get(`/anime/search?q=${encodeURIComponent(q)}`),
+    genres: () => get('/anime/genres'),
+    latest: () => get('/anime/latest'),
     info: (slug) => get(`/anime/info/${encodeURIComponent(slug)}`),
     episode: (slug, n) => get(`/anime/episode/${encodeURIComponent(slug)}/${n}`),
   },
