@@ -1,11 +1,12 @@
 // Cliente NasriPlay (S2) — https://nsrplay.space
-// Estrategia híbrida:
-//   1) Vía directa por TMDB ID (/embed/sources + /embed/resolve): SIN key,
-//      SIN búsqueda. Es la vía primaria en pelis (verificado: 1-8 servers).
+// Estrategia híbrida (v1.3.5: TODOS los endpoints exigen API Key):
+//   1) Vía directa por TMDB ID (/embed/sources + /embed/resolve, CON key,
+//      header X-API-Key): sin búsqueda. Es la vía primaria en pelis.
 //      En series hoy devuelve 0 (se mantiene la llamada por si lo pueblan).
-//   2) Vía búsqueda por título+año (/content/*, REQUIERE key): enriquece
+//   2) Vía búsqueda por título+año (/content/*, CON key): enriquece
 //      pelis y es la única vía para series (info→episodio→resolve→playUrl).
 // - La API Key vive SOLO en el servidor (NSRPLAY_API_KEY). Nunca al front.
+//   Sin key, S2 devuelve vacío (S1 sigue funcionando).
 // - Cache: búsqueda→slug 1h, servidores/resolves 10min. Un 429 o fallo deja
 //   ese tramo vacío sin romper S1 ni el otro tramo.
 
@@ -14,11 +15,17 @@ import { tmdb } from './tmdb.js'
 const BASE = process.env.NSRPLAY_BASE || 'https://nsrplay.space'
 
 // Como el worker de referencia: UA móvil + referer propio.
+// v1.3.5: /embed/* también exige X-API-Key (se agrega si hay key).
 const EMBED_HEADERS = {
   'User-Agent':
     'Mozilla/5.0 (Linux; Android 12; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
   Referer: 'https://nsrplay.space/',
   Accept: 'application/json',
+}
+
+function embedHeaders() {
+  const apiKey = process.env.NSRPLAY_API_KEY
+  return apiKey ? { ...EMBED_HEADERS, 'X-API-Key': apiKey } : { ...EMBED_HEADERS }
 }
 
 const TTL_SEARCH = 60 * 60 * 1000 // 1h: el slug de un título no cambia
@@ -60,11 +67,13 @@ async function call(path, params = {}) {
   }
 }
 
-// Llamada keyless a /embed/* (no consume cuota de la key).
+// Llamada a /embed/* (v1.3.5: requiere key; sin key devuelve null
+// para que ese tramo quede vacío sin romper el resto).
 async function embedCall(path) {
+  if (!process.env.NSRPLAY_API_KEY) return null
   try {
     const res = await fetch(`${BASE}/api/v1${path}`, {
-      headers: EMBED_HEADERS,
+      headers: embedHeaders(),
       signal: AbortSignal.timeout(15000),
     })
     if (!res.ok) return null
@@ -247,11 +256,12 @@ async function resolveViaSearch({ type, tmdbId, season = 1, episode = 1 }) {
 // (embed del host), lo suma como opción aparte.
 async function resolveEmbedServer(s) {
   try {
+    if (!process.env.NSRPLAY_API_KEY) return []
     const url =
       `${BASE}/api/v1/embed/resolve?server=${encodeURIComponent(s.name)}` +
       `&token=${encodeURIComponent(s.token)}`
     const res = await fetch(url, {
-      headers: EMBED_HEADERS,
+      headers: embedHeaders(),
       signal: AbortSignal.timeout(RESOLVE_TIMEOUT),
     })
     if (!res.ok) return []
@@ -305,7 +315,7 @@ export async function resolveNsrToken(server, token) {
   return first
 }
 
-// Vía 1 (keyless): servers directos por TMDB ID, SIN resolver.
+// Vía 1 (con key): servers directos por TMDB ID, SIN resolver.
 // Se listan al instante; el front resuelve el elegido vía resolveNsrToken.
 // Así /watch nunca se cuelga por un resolve lento y no se quema cuota.
 async function resolveViaEmbed({ type, tmdbId, season = 1, episode = 1 }) {
