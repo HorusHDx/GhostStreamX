@@ -39,12 +39,12 @@ export default function AnimePlayer({ servers, title }) {
 
   return (
     <div>
-      <div ref={wrapRef} className="group relative overflow-hidden rounded-[12px] border border-white/10 bg-black">
+      <div ref={wrapRef} className="group player-frame relative overflow-hidden rounded-[12px] border border-white/10 bg-black">
         <iframe
           key={current.url}
           src={current.url}
           title={title || current.server}
-          className="aspect-video w-full"
+          className="player-media absolute inset-0 h-full w-full"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
           allowFullScreen
         />

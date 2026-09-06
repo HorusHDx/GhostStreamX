@@ -137,11 +137,11 @@ export default function Player({ source }) {
   // Embeds (iframe)
   if (kind === 'embed' && !src?.includes('.m3u8')) {
     return (
-      <div ref={wrapRef} className="group relative aspect-video w-full overflow-hidden bg-black">
+      <div ref={wrapRef} className="group player-frame relative w-full overflow-hidden bg-black">
         <iframe
           key={src}
           src={src}
-          className="absolute inset-0 h-full w-full"
+          className="player-media absolute inset-0 h-full w-full"
           allowFullScreen
           allow="autoplay; fullscreen; picture-in-picture"
           title="Reproductor"
@@ -152,12 +152,12 @@ export default function Player({ source }) {
   }
 
   return (
-    <div ref={wrapRef} className="group relative aspect-video w-full bg-black">
+    <div ref={wrapRef} className="group player-frame relative w-full bg-black">
       <video
         ref={videoRef}
         controls
         playsInline
-        className="aspect-video w-full rounded-md bg-black"
+        className="player-media aspect-video w-full rounded-md bg-black"
       />
       <FsButton />
     </div>

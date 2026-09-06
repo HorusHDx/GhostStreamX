@@ -1,6 +1,7 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useRef } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar.jsx'
+import { useSpatialNav } from './hooks/useSpatialNav.js'
 
 // Carga diferida de páginas: el home carga rápido y el resto llega bajo demanda.
 const Home = lazy(() => import('./pages/Home.jsx'))
@@ -15,8 +16,12 @@ const AnimeDetail = lazy(() => import('./pages/AnimeDetail.jsx'))
 const AnimeWatch = lazy(() => import('./pages/AnimeWatch.jsx'))
 
 export default function App() {
+  // Navegación espacial con flechas (control remoto Smart TV) en toda la app.
+  const contentRef = useRef(null)
+  useSpatialNav(contentRef)
+
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
+    <div ref={contentRef} className="flex min-h-screen flex-col bg-bg">
       <Navbar />
       <Suspense
         fallback={

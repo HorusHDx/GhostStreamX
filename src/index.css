@@ -39,6 +39,45 @@
     background: rgba(127, 231, 212, 0.35);
     color: #fff;
   }
+
+  /* Foco visible (teclado / control de Smart TV).
+     Solo aparece con navegación por teclado: mouse y táctil no lo muestran. */
+  :focus-visible {
+    outline: 2px solid #7fe7d4;
+    outline-offset: 2px;
+  }
+
+  /* Contenedor 16:9 con fallback para motores sin `aspect-ratio`
+     (Smart TV 2019-2021). En navegadores modernos el @supports es inerte. */
+  .player-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+  @supports not (aspect-ratio: 16 / 9) {
+    .player-frame {
+      height: 0;
+      padding-bottom: 56.25%;
+    }
+    .player-frame > .player-media {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  /* Modo TV (clase `tv` en <html> si el UA es Tizen/webOS).
+     Solo ajustes visuales: sin blur costoso y texto base mayor. */
+  .tv {
+    font-size: 112.5%;
+  }
+  .tv .backdrop-blur,
+  .tv .backdrop-blur-md,
+  .tv .backdrop-blur-2xl {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 @layer utilities {
