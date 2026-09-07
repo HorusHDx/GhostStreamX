@@ -14,6 +14,7 @@ const Historial = lazy(() => import('./pages/Historial.jsx'))
 const Anime = lazy(() => import('./pages/Anime.jsx'))
 const AnimeDetail = lazy(() => import('./pages/AnimeDetail.jsx'))
 const AnimeWatch = lazy(() => import('./pages/AnimeWatch.jsx'))
+const NotFound = lazy(() => import('./pages/NotFound.jsx'))
 
 export default function App() {
   // Navegación espacial con flechas (control remoto Smart TV) en toda la app.
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/anime" element={<Anime />} />
             <Route path="/anime/:slug" element={<AnimeDetail />} />
             <Route path="/anime/:slug/:ep" element={<AnimeWatch />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
       </Suspense>

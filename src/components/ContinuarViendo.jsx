@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { loadHistory, watchPathFor } from '../history.js'
 
-const IMG = 'https://image.tmdb.org/t/p/w500'
+const IMG = 'https://image.tmdb.org/t/p/w342'
 
 // Fila "Continuar viendo" usando el historial local con metadata.
 // Se refresca al volver al inicio (por si se borró algo en /historial).

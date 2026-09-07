@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api.js'
 
-const IMG = 'https://image.tmdb.org/t/p/w500'
+const IMG = 'https://image.tmdb.org/t/p/w342'
 const ORDER = ['netflix', 'prime', 'hbo', 'disney', 'apple', 'paramount']
 
 // Fila "Top series por plataforma": tabs de red, modo

@@ -5,7 +5,7 @@ import Player from '../components/Player.jsx'
 import PosterCard from '../components/PosterCard.jsx'
 
 const HISTORY_KEY = 'ghoststreamx_history'
-const STILL = 'https://image.tmdb.org/t/p/w500'
+const STILL = 'https://image.tmdb.org/t/p/w300'
 
 function saveProgress(key, seconds, meta = {}) {
   try {
@@ -253,8 +253,14 @@ export default function Watch({ type }) {
       <ProgressTracker enabled={!!selected} getPosition={() => 0} meta={meta} />
 
       {error && (
-        <div className="mb-5 rounded-[10px] border border-red-900 bg-red-950/40 p-4 text-red-300">
-          {error}
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[10px] border border-red-900 bg-red-950/40 p-4 text-red-300">
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="shrink-0 rounded-full border border-red-400/30 bg-white/5 px-4 py-1.5 text-[0.82rem] font-semibold text-red-200 transition hover:bg-white/10"
+          >
+            Reintentar
+          </button>
         </div>
       )}
 

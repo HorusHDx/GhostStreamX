@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-const IMG_BASE = 'https://image.tmdb.org/t/p/w500'
+const IMG_BASE = 'https://image.tmdb.org/t/p/w342'
 
 export default function PosterCard({ item }) {
   const isMovie = item.media_type ? item.media_type === 'movie' : item.title

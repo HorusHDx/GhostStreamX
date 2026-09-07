@@ -23,9 +23,17 @@ export default function AnimeDetail() {
     return (
       <div className="px-6 pt-28">
         <p className="text-red-400">Error al cargar: {error}</p>
-        <Link to="/anime" className="mt-3 inline-block font-semibold text-spectral hover:underline">
-          ← Volver al catálogo
-        </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-full border border-white/10 bg-white/5 px-5 py-2 text-[0.85rem] font-semibold text-dimtext transition hover:text-white"
+          >
+            Reintentar
+          </button>
+          <Link to="/anime" className="font-semibold text-spectral hover:underline">
+            ← Volver al catálogo
+          </Link>
+        </div>
       </div>
     )
   }

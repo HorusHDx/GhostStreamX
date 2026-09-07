@@ -7,7 +7,7 @@ import {
   watchPathFor,
 } from '../history.js'
 
-const IMG = 'https://image.tmdb.org/t/p/w500'
+const IMG = 'https://image.tmdb.org/t/p/w342'
 
 function timeAgo(t) {
   if (!t) return ''

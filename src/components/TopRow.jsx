@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 
-const IMG = 'https://image.tmdb.org/t/p/w500'
+const IMG = 'https://image.tmdb.org/t/p/w342'
 
 // Fila "Top N" con numerales outline (estilo del amigo).
 export default function TopRow({ title, items, type, id }) {

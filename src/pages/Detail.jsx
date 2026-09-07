@@ -39,7 +39,18 @@ export default function Detail({ type }) {
       .catch(() => setEpisodes([]))
   }, [type, data, id, season])
 
-  if (error) return <div className="pt-20 px-6 text-red-400">{error}</div>
+  if (error)
+    return (
+      <div className="flex flex-col items-start gap-4 px-6 pt-20">
+        <p className="text-red-400">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-full border border-white/10 bg-white/5 px-5 py-2 text-[0.85rem] font-semibold text-dimtext transition hover:text-white"
+        >
+          Reintentar
+        </button>
+      </div>
+    )
   if (!data) return <div className="pt-20 px-6 text-dimtext">Cargando…</div>
 
   const title = data.title || data.name
