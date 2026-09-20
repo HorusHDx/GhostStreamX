@@ -15,31 +15,17 @@
 
 import { cached } from '../cache.js'
 import { isAllowed, hostName } from '../hosts.js'
+import { scrapeFetch } from '../scrapeFetch.js'
 
 const BASE = 'https://www.poseidonhd2.co'
 const PLAYER = 'https://player.poseidonhd2.co'
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 const TIMEOUT = 18000
 // Máximo de players a resolver por petición (balance entre velocidad y
 // cobertura; los primeros suelen bastar).
 const MAX_PLAYERS = 12
 
 async function fetchText(url, referer = `${BASE}/`) {
-  try {
-    const res = await fetch(url, {
-      headers: {
-        'user-agent': UA,
-        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        referer,
-      },
-      signal: AbortSignal.timeout(TIMEOUT),
-    })
-    if (!res.ok) return ''
-    return await res.text()
-  } catch {
-    return ''
-  }
+  return scrapeFetch(url, referer, TIMEOUT)
 }
 
 function slugify(s) {
