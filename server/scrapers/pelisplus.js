@@ -14,6 +14,7 @@
 // Devuelve un array de sources { name, label, provider, language, kind, url }
 // filtrando con la lista blanca de hosts. Vacío si no encontró el título.
 
+import { createHash, createDecipheriv } from 'node:crypto'
 import { cached } from '../cache.js'
 import { isAllowed } from '../hosts.js'
 
@@ -117,6 +118,114 @@ function extractUrls(html) {
   return out
 }
 
+// ---------------------------------------------------------------------------
+// Resolución de servidores internos de embed69.org
+//
+// embed69 es un "agregador" que agrupa varios hosters en una sola página.
+// Cada página tiene un JSON `dataLink` con los hosters encriptados y un
+// desafío PoW (Proof of Work) que debemos resolver para obtener las URLs
+// reales de cada hoster (vidhide, streamwish, voe, etc.).
+// ---------------------------------------------------------------------------
+
+function sha256hex(str) {
+  return createHash('sha256').update(str).digest('hex')
+}
+
+// Resuelve el desafío PoW: encontrar un nonce tal que
+// SHA-256(challenge + nonce) empiece con `difficulty` ceros.
+function solvePoW(challenge, difficulty, salt) {
+  const prefix = '0'.repeat(difficulty)
+  for (let nonce = 0; nonce < 2_000_000; nonce++) {
+    if (sha256hex(challenge + String(nonce)).startsWith(prefix)) {
+      return createHash('sha256').update(challenge + String(nonce) + salt).digest()
+    }
+  }
+  return null
+}
+
+// Descifra un link AES-CBC encriptado por embed69.
+// Formato: primeros 16 bytes = IV, resto = ciphertext.
+function decryptLink(encryptedBase64, key) {
+  try {
+    const raw = Buffer.from(encryptedBase64, 'base64')
+    const iv = raw.slice(0, 16)
+    const ciphertext = raw.slice(16)
+    const decipher = createDecipheriv('aes-256-cbc', key, iv)
+    return decipher.update(ciphertext, undefined, 'utf8') + decipher.final('utf8')
+  } catch {
+    return null
+  }
+}
+
+// Nombres amigables para los hosters de embed69.
+const EMBED69_HOSTER_NAMES = {
+  vidhide: 'VidHide',
+  streamwish: 'Streamwish',
+  voe: 'VOE',
+  doodstream: 'Doodstream',
+  filemoon: 'Filemoon',
+  streamtape: 'Streamtape',
+}
+
+// Abre la página de embed69, extrae `dataLink`, resuelve el PoW y descifra
+// los links de cada hoster. Devuelve [{ name, url, language }] o null.
+async function resolveEmbed69(embed69Url) {
+  const html = await fetchText(embed69Url, embed69Url)
+  if (!html) return null
+
+  const dlMatch = html.match(/(?:let|const|var)\s+dataLink\s*=\s*(\[[\s\S]*?\]);/)
+  if (!dlMatch) return null
+
+  let dataLink
+  try {
+    dataLink = JSON.parse(dlMatch[1])
+  } catch {
+    return null
+  }
+  if (!Array.isArray(dataLink) || dataLink.length === 0) return null
+
+  const challenge = html.match(/POW_CHALLENGE\s*=\s*['"]([^'"]+)['"]/)?.[1]
+  const difficulty = parseInt(html.match(/POW_DIFFICULTY\s*=\s*(\d+)/)?.[1] || '3', 10)
+  const salt = html.match(/POW_SALT\s*=\s*['"]([^'"]+)['"]/)?.[1]
+
+  // Prefetch PoW key (solo una vez para todos los embeds)
+  let powKey = null
+  if (challenge && salt) powKey = solvePoW(challenge, difficulty, salt)
+
+  const results = []
+
+  for (const entry of dataLink) {
+    const lang = entry.video_language || null
+    for (const embed of entry.sortedEmbeds || []) {
+      let url = null
+      const serverName = embed.servername || 'Unknown'
+
+      // Formato dot-separated (raro pero posible)
+      if (embed.link && embed.link.includes('.') && !embed.link.startsWith('http')) {
+        try {
+          const decoded = JSON.parse(Buffer.from(embed.link.split('.')[1], 'base64').toString())
+          url = decoded?.link || null
+        } catch { /* ignore */ }
+      }
+
+      // Descifrado AES-CBC con PoW
+      if (!url && powKey) {
+        url = decryptLink(embed.link, powKey)
+      }
+
+      if (url && url.startsWith('http')) {
+        results.push({
+          name: EMBED69_HOSTER_NAMES[serverName.toLowerCase()] || serverName,
+          url,
+          language: lang,
+        })
+      }
+    }
+  }
+
+  return results.length > 0 ? results : null
+}
+
 // Punto de entrada principal.
 export async function resolvePelisPlus({ type, tmdbId, title, originalTitle, year, season = 1, episode = 1 }) {
   const cacheKey = `pp:${type}:${String(tmdbId)}:${normalize(title || '')}:${year || ''}:${type === 'tv' ? `${season}/${episode}` : ''}`
@@ -133,14 +242,41 @@ export async function resolvePelisPlus({ type, tmdbId, title, originalTitle, yea
       if (!html) continue
       const urls = extractUrls(html).filter((u) => isAllowed(u))
       if (urls.length === 0) continue
-      return urls.map((u, i) => ({
-        name: `Servidor ${i + 1}`,
-        label: `PelisPlus HD · Servidor ${i + 1}`,
-        provider: 'PelisPlus HD',
-        language: null,
-        kind: u.includes('.m3u8') ? 'direct' : 'embed',
-        url: u,
-      }))
+
+      // Resolver cada URL — los embed69 se abren para extraer hosters internos
+      const sources = []
+      for (const u of urls) {
+        if (u.includes('embed69.org')) {
+          const resolved = await resolveEmbed69(u)
+          if (resolved) {
+            for (const r of resolved) {
+              if (isAllowed(r.url)) {
+                sources.push({
+                  name: r.name,
+                  label: `PelisPlus HD · ${r.name}`,
+                  provider: 'PelisPlus HD',
+                  language: r.language,
+                  kind: 'embed',
+                  url: r.url,
+                })
+              }
+            }
+          }
+          // Si no se resolvió, no devolvemos la URL de embed69 directamente
+          // porque el reproductor no puede cargarla (necesita los hosters).
+        } else {
+          // URL directa de otro host — devolver tal cual
+          sources.push({
+            name: `Servidor ${sources.length + 1}`,
+            label: `PelisPlus HD · Servidor ${sources.length + 1}`,
+            provider: 'PelisPlus HD',
+            language: null,
+            kind: u.includes('.m3u8') ? 'direct' : 'embed',
+            url: u,
+          })
+        }
+      }
+      if (sources.length > 0) return sources
     }
     return []
   })
