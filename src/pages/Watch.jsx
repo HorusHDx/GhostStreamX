@@ -284,26 +284,106 @@ export default function Watch({ type }) {
             Abrir externo ↗
           </a>
           <button
-            onClick={() => {
-              setDlOpen(true)
-              document
-                .getElementById('servidores')
-                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-spectral-dim bg-spectral-dim/15 px-4 py-1.5 text-[0.82rem] font-semibold text-spectral transition hover:bg-spectral-dim/30"
+            onClick={() => setDlOpen((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-[0.82rem] font-semibold transition ${
+              dlOpen
+                ? 'border-spectral-dim bg-spectral-dim/20 text-spectral'
+                : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
+            }`}
           >
-            ⬇ Descargar
+            {dlOpen ? '✕ Volver' : '⬇ Descargar'}
           </button>
-          <span className="text-[0.78rem] text-dimtext">
-            Si el video no carga dentro del reproductor, ábrelo en pestaña
-            nueva o probá otro servidor.
-          </span>
         </div>
       )}
 
-      {/* ---------- META + SELECTORES ---------- */}
+      {/* ---------- SERVIDORES (justo debajo del reproductor) ---------- */}
       {!loading && !error && selected && (
-        <div className="mt-7">
+        <div id="servidores" className="mt-5 mb-6">
+          {dlOpen ? (
+            <div className="rounded-[14px] border border-white/10 bg-surface-2 p-4">
+              <p className="mb-1 text-[0.95rem] font-semibold">⬇ Descargar</p>
+              <p className="mb-3 text-[0.78rem] text-dimtext">
+                La descarga se abre en la página oficial del servidor, en otra pestaña.
+              </p>
+              {[...groupedSources.entries()].map(([g, gSources]) => (
+                <div key={g} className="mb-4 last:mb-0">
+                  <p className="mb-2 text-[0.72rem] font-bold uppercase tracking-wider text-spectral">
+                    {GROUP_LABELS[g] || g}
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {gSources.map((s, i) => (
+                      <div
+                        key={`${s.name}-${i}`}
+                        className="flex items-center justify-between gap-2 rounded-[10px] border border-white/10 bg-white/5 px-3 py-2.5"
+                      >
+                        <p className="min-w-0 truncate text-[0.85rem] font-semibold">
+                          {s.name || `Servidor ${i + 1}`}
+                        </p>
+                        <button
+                          onClick={() =>
+                            window.open(downloadUrlFor(s.url), '_blank', 'noopener')
+                          }
+                          className="shrink-0 rounded-full border border-spectral-dim bg-spectral-dim/15 px-3 py-1.5 text-[0.78rem] font-bold text-spectral transition hover:bg-spectral-dim/30"
+                        >
+                          ⬇
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            [...groupedSources.entries()].map(([g, gSources]) => {
+              const label = GROUP_LABELS[g] || g
+              return (
+                <div key={g} className="mb-4 last:mb-0">
+                  <p className="mb-2 text-[0.75rem] font-bold uppercase tracking-wider text-spectral">
+                    {label}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {gSources.map((s, i) => {
+                      const isActive =
+                        effective &&
+                        (s.url || '') === (effective.url || '') &&
+                        (s.name || '') === (effective.name || '')
+                      return (
+                        <button
+                          key={`${s.name}-${i}`}
+                          onClick={() => pickSource(s)}
+                          className={`flex items-center gap-2.5 rounded-[10px] border px-4 py-2.5 text-left transition ${
+                            isActive
+                              ? 'border-spectral bg-spectral-dim/15 text-white'
+                              : 'border-white/10 bg-white/5 text-dimtext hover:border-white/25 hover:text-white'
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                              isActive ? 'bg-spectral' : 'bg-white/20'
+                            }`}
+                          />
+                          <span className="text-[0.85rem] font-semibold">
+                            {s.name || `Servidor ${i + 1}`}
+                          </span>
+                          {isActive && (
+                            <span className="ml-1 rounded-full border border-spectral/40 bg-spectral/15 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wide text-spectral">
+                              Reproduciendo
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
+
+      {/* ---------- TÍTULO + META ---------- */}
+      {!loading && !error && selected && (
+        <div>
           <p className="mb-2 text-[0.85rem] font-semibold text-spectral">
             {type === 'movie' ? 'Película' : meta.title || 'Serie'}
           </p>
@@ -312,124 +392,10 @@ export default function Watch({ type }) {
               ? meta.title || 'Reproduciendo'
               : `Temporada ${seasonParam} · Episodio ${episodeParam}${currentEpisode?.name ? ` — "${currentEpisode.name}"` : ''}`}
           </h1>
-          {sub && <p className="mb-[22px] text-[0.95rem] text-dimtext">{sub}</p>}
-
-          {/* ---------- SERVIDORES ---------- */}
-          <div id="servidores" className="mb-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[0.8rem] font-semibold uppercase tracking-wider text-dimtext">
-                Servidores
-              </p>
-              <button
-                onClick={() => setDlOpen((v) => !v)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[0.8rem] font-semibold transition ${
-                  dlOpen
-                    ? 'border-spectral-dim bg-spectral-dim/20 text-spectral'
-                    : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
-                }`}
-              >
-                {dlOpen ? '✕ Volver a servidores' : '⬇ Descargar'}
-              </button>
-            </div>
-
-            {dlOpen ? (
-              /* ---------- PANEL DE DESCARGA ---------- */
-              <div className="rounded-[14px] border border-white/10 bg-surface-2 p-4">
-                <div className="mb-3">
-                  <p className="text-[0.95rem] font-semibold">
-                    ⬇ Descargar —{' '}
-                    {type === 'movie'
-                      ? meta.title || 'Película'
-                      : `Temporada ${seasonParam} · Episodio ${episodeParam}`}
-                  </p>
-                  <p className="text-[0.78rem] text-dimtext">
-                    La descarga se abre en la página oficial del servidor, en otra pestaña.
-                  </p>
-                </div>
-                {[...groupedSources.entries()].map(([g, gSources]) => (
-                  <div key={g} className="mb-4 last:mb-0">
-                    <p className="mb-2 text-[0.72rem] font-bold uppercase tracking-wider text-spectral">
-                      {GROUP_LABELS[g] || g}
-                    </p>
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {gSources.map((s, i) => (
-                        <div
-                          key={`${s.name}-${i}`}
-                          className="flex items-center justify-between gap-2 rounded-[10px] border border-white/10 bg-white/5 px-3 py-2.5"
-                        >
-                          <p className="min-w-0 truncate text-[0.85rem] font-semibold">
-                            {s.name || `Servidor ${i + 1}`}
-                          </p>
-                          <button
-                            onClick={() =>
-                              window.open(downloadUrlFor(s.url), '_blank', 'noopener')
-                            }
-                            className="shrink-0 rounded-full border border-spectral-dim bg-spectral-dim/15 px-3 py-1.5 text-[0.78rem] font-bold text-spectral transition hover:bg-spectral-dim/30"
-                          >
-                            ⬇ Descargar
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <button
-                  onClick={() => setDlOpen(false)}
-                  className="mt-3 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-spectral transition hover:underline"
-                >
-                  ← Volver al reproductor
-                </button>
-              </div>
-            ) : (
-              /* ---------- LISTA DE SERVIDORES POR GRUPO ---------- */
-              [...groupedSources.entries()].map(([g, gSources]) => {
-                const label = GROUP_LABELS[g] || g
-                return (
-                  <div key={g} className="mb-5 last:mb-0">
-                    <p className="mb-2.5 text-[0.8rem] font-bold uppercase tracking-wider text-spectral">
-                      {label}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {gSources.map((s, i) => {
-                        const isActive =
-                          effective &&
-                          (s.url || '') === (effective.url || '') &&
-                          (s.name || '') === (effective.name || '')
-                        return (
-                          <button
-                            key={`${s.name}-${i}`}
-                            onClick={() => pickSource(s)}
-                            className={`flex items-center gap-2.5 rounded-[10px] border px-4 py-2.5 text-left transition ${
-                              isActive
-                                ? 'border-spectral bg-spectral-dim/15 text-white'
-                                : 'border-white/10 bg-white/5 text-dimtext hover:border-white/25 hover:text-white'
-                            }`}
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                                isActive ? 'bg-spectral' : 'bg-white/20'
-                              }`}
-                            />
-                            <span className="text-[0.85rem] font-semibold">
-                              {s.name || `Servidor ${i + 1}`}
-                            </span>
-                            {isActive && (
-                              <span className="ml-1 rounded-full border border-spectral/40 bg-spectral/15 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wide text-spectral">
-                                Reproduciendo
-                              </span>
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
+          {sub && <p className="mb-5 text-[0.95rem] text-dimtext">{sub}</p>}
 
           {(currentEpisode?.overview || (type === 'movie' && meta.overview)) && (
-            <p className="max-w-[760px] text-[0.95rem] leading-relaxed text-[#C7CBD4]">
+            <p className="mb-5 max-w-[760px] text-[0.95rem] leading-relaxed text-[#C7CBD4]">
               {type === 'movie' ? meta.overview : currentEpisode?.overview || meta.overview}
             </p>
           )}
@@ -437,7 +403,7 @@ export default function Watch({ type }) {
           {showNext && (
             <Link
               to={`/watch/tv/${id}?season=${seasonNum}&episode=${nextEpisode.episode_number}`}
-              className="mt-5 inline-flex items-center gap-2 rounded-full border border-spectral-dim px-5 py-2.5 text-[0.9rem] font-semibold text-spectral transition hover:bg-spectral-dim"
+              className="inline-flex items-center gap-2 rounded-full border border-spectral-dim px-5 py-2.5 text-[0.9rem] font-semibold text-spectral transition hover:bg-spectral-dim"
             >
               Siguiente episodio: E{nextEpisode.episode_number}
               {nextEpisode.name ? ` — ${nextEpisode.name}` : ''}
