@@ -33,17 +33,9 @@ const prettyLang = (l) => {
   return map[l] || l
 }
 
-// Nombre de dominio de una URL, para mostrar el sitio del servidor.
-const hostOf = (u) => {
-  try {
-    return new URL(u).hostname.replace(/^www\./, '')
-  } catch {
-    return ''
-  }
-}
-
-// Etiquetas de los grupos que devuelve el backend.
-const GROUP_LABELS = { P1: 'PelisPlus HD', P2: 'Poseidon' }
+// Etiquetas genéricas de los grupos: solo "Servidor N", sin revelar el
+// proveedor real de cada grupo.
+const GROUP_LABELS = { P1: 'Servidor 1', P2: 'Servidor 2' }
 
 export default function Watch({ type }) {
   const { id } = useParams()
@@ -55,7 +47,7 @@ export default function Watch({ type }) {
   const [error, setError] = useState('')
   const [sources, setSources] = useState([])
   const [selected, setSelected] = useState(null)
-  const [grupo, setGrupo] = useState('') // grupo activo: P1 (PelisPlus HD) | P2 (Poseidon)
+  const [grupo, setGrupo] = useState('') // grupo activo: P1 | P2
   const [groupList, setGroupList] = useState([]) // grupos disponibles, en orden
   const [resolveError, setResolveError] = useState('')
   const [meta, setMeta] = useState({})
@@ -261,7 +253,7 @@ export default function Watch({ type }) {
               HD
             </span>
             <span className="rounded-[20px] border border-white/15 bg-black/55 px-3 py-1 text-[0.75rem] text-dimtext backdrop-blur-md">
-              {selected.provider ? selected.provider : prettyLang(selected.language)}
+              {GROUP_LABELS[selected.group || 'P1']}
             </span>
           </div>
         )}
@@ -314,7 +306,7 @@ export default function Watch({ type }) {
           </h1>
           {sub && <p className="mb-[22px] text-[0.95rem] text-dimtext">{sub}</p>}
 
-          {/* Tabs por proveedor (P1 PelisPlus HD, P2 Poseidon, ...) */}
+          {/* Tabs genéricas por grupo (Servidor 1 = P1, Servidor 2 = P2) */}
           <div className="mb-4 flex gap-2">
             {groupList.map((g, i) => {
               const label = GROUP_LABELS[g] || `Servidor ${i + 1}`
@@ -389,9 +381,6 @@ export default function Watch({ type }) {
                           <span className="flex flex-col leading-tight">
                             <span className="text-[0.85rem] font-semibold">
                               {s.name || `Servidor ${i + 1}`}
-                            </span>
-                            <span className="text-[0.7rem] text-dimtext/80">
-                              {hostOf(s.url) || 'embed externo'}
                             </span>
                           </span>
                           {isActive && (
