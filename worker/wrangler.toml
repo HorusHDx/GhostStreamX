@@ -1,15 +1,14 @@
 # Config para desplegar el scrape proxy con Wrangler (CLI).
-# Alternativa: copiar worker/proxy.js en el dashboard de Cloudflare
-# (Workers & Pages > Create > Create Worker > pasted code).
 #
 # Uso:
-#   npm i -g wrangler
-#   wrangler login
-#   wrangler deploy            # (o wrangler publish en versiones viejas)
+#   npx wrangler login        # abre el navegador para autorizar
+#   npx wrangler deploy -c wrangler.toml
 #
-# Variable opcional: SCRAPE_TOKEN (Settings > Variables en el dashboard)
-# o editá TOKEN_FALLBACK dentro de proxy.js.
+# El token se setea en [vars] y debe coincidir con SCRAPER_PROXY_TOKEN en Vercel.
 
-name = "ghoststreamx-scrape-proxy"
+name = "work-pelisplus"
 main = "proxy.js"
 compatibility_date = "2025-01-01"
+
+[vars]
+SCRAPE_TOKEN = "gsx-wp-2026-9k3m"
