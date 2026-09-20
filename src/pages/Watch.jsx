@@ -75,8 +75,6 @@ export default function Watch({ type }) {
   const [error, setError] = useState('')
   const [sources, setSources] = useState([])
   const [selected, setSelected] = useState(null)
-  const [grupo, setGrupo] = useState('') // grupo activo: P1 | P2
-  const [groupList, setGroupList] = useState([]) // grupos disponibles, en orden
   const [resolveError, setResolveError] = useState('')
   const [meta, setMeta] = useState({})
   const [seasons, setSeasons] = useState([])
@@ -126,17 +124,8 @@ export default function Watch({ type }) {
         setError(data.message || 'No se encontró una fuente disponible.')
         return
       }
-      // Grupos en el orden que llegan del backend (P1 antes que P2).
-      const groups = []
-      for (const s of list) {
-        const g = s.group || 'P1'
-        if (!groups.includes(g)) groups.push(g)
-      }
-      setGroupList(groups)
-      const g = groups[0] || 'P1'
-      setGrupo(g)
       setSources(list)
-      pickSource(list.find((s) => (s.group || 'P1') === g) || list[0])
+      pickSource(list[0])
     })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -181,41 +170,18 @@ export default function Watch({ type }) {
     ).catch(() => {})
   }, [type, id])
 
-  // Fuentes del grupo activo, agrupadas por idioma para los selects.
-  const groupSources = useMemo(
-    () => sources.filter((s) => (s.group || 'P1') === grupo),
-    [sources, grupo]
-  )
-  const switchGrupo = (g) => {
-    setGrupo(g)
-    setResolveError('')
-    const first = sources.find((s) => (s.group || 'P1') === g)
-    if (first) pickSource(first)
-  }
-
-  const byLanguage = useMemo(() => {
+  // Todas las fuentes agrupadas por proveedor (P1, P2, ...) en orden.
+  const groupedSources = useMemo(() => {
     const map = new Map()
-    for (const s of groupSources) {
-      const key = s.language || 'server'
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(s)
+    for (const s of sources) {
+      const g = s.group || 'P1'
+      if (!map.has(g)) map.set(g, [])
+      map.get(g).push(s)
     }
     return map
-  }, [groupSources])
+  }, [sources])
 
-  const activeSelected =
-    selected && (selected.group || 'P1') === grupo ? selected : null
-  const effective = activeSelected && activeSelected.url ? activeSelected : null
-
-  // Índice del servidor activo dentro del grupo, para posicionar el dropdown.
-  const selectedIdx = useMemo(() => {
-    if (!activeSelected) return -1
-    return groupSources.findIndex(
-      (s) =>
-        (s.url || '') === (activeSelected.url || '') &&
-        (s.name || '') === (activeSelected.name || '')
-    )
-  }, [groupSources, activeSelected])
+  const effective = selected && selected.url ? selected : null
 
   const currentEpisode =
     type === 'tv'
@@ -348,31 +314,11 @@ export default function Watch({ type }) {
           </h1>
           {sub && <p className="mb-[22px] text-[0.95rem] text-dimtext">{sub}</p>}
 
-          {/* Tabs genéricas por grupo (Servidor 1 = P1, Servidor 2 = P2) */}
-          <div className="mb-4 flex gap-2">
-            {groupList.map((g, i) => {
-              const label = GROUP_LABELS[g] || `Servidor ${i + 1}`
-              return (
-                <button
-                  key={g}
-                  onClick={() => switchGrupo(g)}
-                  className={`rounded-full border px-4 py-2 text-[0.85rem] font-semibold transition ${
-                    grupo === g
-                      ? 'border-spectral-dim bg-spectral-dim/20 text-spectral'
-                      : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
-                  }`}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* ---------- SELECCIÓN + DESCARGA DE SERVIDORES ---------- */}
+          {/* ---------- SERVIDORES ---------- */}
           <div id="servidores" className="mb-6">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <p className="text-[0.8rem] font-semibold uppercase tracking-wider text-dimtext">
-                Servidores · {GROUP_LABELS[grupo] || `Fuente ${groupList.indexOf(grupo) + 1}`}
+                Servidores
               </p>
               <button
                 onClick={() => setDlOpen((v) => !v)}
@@ -382,28 +328,11 @@ export default function Watch({ type }) {
                     : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
                 }`}
               >
-                {dlOpen ? '✕ Cerrar descargas' : '⬇ Descargar'}
+                {dlOpen ? '✕ Volver a servidores' : '⬇ Descargar'}
               </button>
             </div>
 
-            {groupSources.length === 0 ? (
-              <div className="rounded-[10px] border border-white/10 bg-surface-2 p-4 text-[0.9rem] text-dimtext">
-                {GROUP_LABELS[grupo] || `Servidor ${groupList.indexOf(grupo) + 1}`} no
-                devolvió fuentes para este título.{' '}
-                {groupList.length > 1 && (
-                  <button
-                    onClick={() => {
-                      const next =
-                        groupList[(groupList.indexOf(grupo) + 1) % groupList.length]
-                      switchGrupo(next)
-                    }}
-                    className="font-semibold text-spectral hover:underline"
-                  >
-                    Usar otra fuente
-                  </button>
-                )}
-              </div>
-            ) : dlOpen ? (
+            {dlOpen ? (
               /* ---------- PANEL DE DESCARGA ---------- */
               <div className="rounded-[14px] border border-white/10 bg-surface-2 p-4">
                 <div className="mb-3">
@@ -414,33 +343,36 @@ export default function Watch({ type }) {
                       : `Temporada ${seasonParam} · Episodio ${episodeParam}`}
                   </p>
                   <p className="text-[0.78rem] text-dimtext">
-                    Elegí un servidor: la descarga se abre en su página oficial, en otra
-                    pestaña.
+                    La descarga se abre en la página oficial del servidor, en otra pestaña.
                   </p>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {groupSources.map((s, i) => (
-                    <div
-                      key={`${s.name || s.url}-${i}`}
-                      className="flex items-center justify-between gap-2 rounded-[10px] border border-white/10 bg-white/5 px-3 py-2.5"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-[0.85rem] font-semibold">
-                          {s.name || `Servidor ${i + 1}`}
-                        </p>
-                        {s.language && (
-                          <p className="text-[0.72rem] text-dimtext">{prettyLang(s.language)}</p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => window.open(downloadUrlFor(s.url), '_blank', 'noopener')}
-                        className="shrink-0 rounded-full border border-spectral-dim bg-spectral-dim/15 px-3 py-1.5 text-[0.78rem] font-bold text-spectral transition hover:bg-spectral-dim/30"
-                      >
-                        ⬇ Descargar
-                      </button>
+                {[...groupedSources.entries()].map(([g, gSources]) => (
+                  <div key={g} className="mb-4 last:mb-0">
+                    <p className="mb-2 text-[0.72rem] font-bold uppercase tracking-wider text-spectral">
+                      {GROUP_LABELS[g] || g}
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {gSources.map((s, i) => (
+                        <div
+                          key={`${s.name}-${i}`}
+                          className="flex items-center justify-between gap-2 rounded-[10px] border border-white/10 bg-white/5 px-3 py-2.5"
+                        >
+                          <p className="min-w-0 truncate text-[0.85rem] font-semibold">
+                            {s.name || `Servidor ${i + 1}`}
+                          </p>
+                          <button
+                            onClick={() =>
+                              window.open(downloadUrlFor(s.url), '_blank', 'noopener')
+                            }
+                            className="shrink-0 rounded-full border border-spectral-dim bg-spectral-dim/15 px-3 py-1.5 text-[0.78rem] font-bold text-spectral transition hover:bg-spectral-dim/30"
+                          >
+                            ⬇ Descargar
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
                 <button
                   onClick={() => setDlOpen(false)}
                   className="mt-3 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-spectral transition hover:underline"
@@ -449,58 +381,25 @@ export default function Watch({ type }) {
                 </button>
               </div>
             ) : (
-              <>
-                {/* Dropdown para cambiar de servidor al instante */}
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <select
-                    value={String(selectedIdx >= 0 ? selectedIdx : 0)}
-                    onChange={(e) => {
-                      if (e.target.value === '__DL__') {
-                        setDlOpen(true)
-                        return
-                      }
-                      const s = groupSources[Number(e.target.value)]
-                      if (s) pickSource(s)
-                    }}
-                    className="h-10 max-w-full rounded-[10px] border border-white/15 bg-surface-2 px-3 text-[0.85rem] font-medium text-white outline-none transition focus:border-spectral-dim"
-                  >
-                    {[...byLanguage.entries()].map(([lang, list]) =>
-                      list.map((s, i) => (
-                        <option
-                          key={`opt-${s.url || s.name}-${i}`}
-                          value={String(groupSources.indexOf(s))}
-                        >
-                          {byLanguage.size > 1 ? `${prettyLang(lang)} · ` : ''}
-                          {s.name || `Servidor ${i + 1}`}
-                        </option>
-                      ))
-                    )}
-                    <option value="__DL__">⬇ Descargar</option>
-                  </select>
-                  <span className="text-[0.78rem] text-dimtext">
-                    Cambiá de servidor en el listado, o usá el panel de descarga arriba.
-                  </span>
-                </div>
-
-                {/* Lista visible, separada por idioma */}
-                {[...byLanguage.entries()].map(([lang, list]) => (
-                  <div key={lang} className={byLanguage.size > 1 ? 'mb-3' : ''}>
-                    {byLanguage.size > 1 && (
-                      <p className="mb-1.5 text-[0.75rem] font-medium text-dimtext">
-                        {prettyLang(lang)}
-                      </p>
-                    )}
+              /* ---------- LISTA DE SERVIDORES POR GRUPO ---------- */
+              [...groupedSources.entries()].map(([g, gSources]) => {
+                const label = GROUP_LABELS[g] || g
+                return (
+                  <div key={g} className="mb-5 last:mb-0">
+                    <p className="mb-2.5 text-[0.8rem] font-bold uppercase tracking-wider text-spectral">
+                      {label}
+                    </p>
                     <div className="flex flex-wrap gap-2">
-                      {list.map((s, i) => {
+                      {gSources.map((s, i) => {
                         const isActive =
-                          activeSelected &&
-                          (s.url || '') === (activeSelected.url || '') &&
-                          (s.name || '') === (activeSelected.name || '')
+                          effective &&
+                          (s.url || '') === (effective.url || '') &&
+                          (s.name || '') === (effective.name || '')
                         return (
                           <button
-                            key={`${s.name || s.url}-${i}`}
+                            key={`${s.name}-${i}`}
                             onClick={() => pickSource(s)}
-                            className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2 text-left transition ${
+                            className={`flex items-center gap-2.5 rounded-[10px] border px-4 py-2.5 text-left transition ${
                               isActive
                                 ? 'border-spectral bg-spectral-dim/15 text-white'
                                 : 'border-white/10 bg-white/5 text-dimtext hover:border-white/25 hover:text-white'
@@ -511,10 +410,8 @@ export default function Watch({ type }) {
                                 isActive ? 'bg-spectral' : 'bg-white/20'
                               }`}
                             />
-                            <span className="flex flex-col leading-tight">
-                              <span className="text-[0.85rem] font-semibold">
-                                {s.name || `Servidor ${i + 1}`}
-                              </span>
+                            <span className="text-[0.85rem] font-semibold">
+                              {s.name || `Servidor ${i + 1}`}
                             </span>
                             {isActive && (
                               <span className="ml-1 rounded-full border border-spectral/40 bg-spectral/15 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wide text-spectral">
@@ -526,8 +423,8 @@ export default function Watch({ type }) {
                       })}
                     </div>
                   </div>
-                ))}
-              </>
+                )
+              })
             )}
           </div>
 
