@@ -1,0 +1,28 @@
+# Node
+node_modules/
+*.log
+npm-debug.log*
+
+# Entorno
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+
+# Vercel
+.vercel/
+
+# README (lo mantenemos local / no se sube por discreción)
+README.md
+
+# Maquetas del amigo (referencia visual local, no se suben)
+ghoststreamx.html
+reproductor.html
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
