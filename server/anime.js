@@ -608,7 +608,7 @@ export async function animeTop(limit = 10) {
   return out
 }
 
-// ---------- Handlers Express (montados bajo /anime en api/index.js) ----------
+// ---------- Handlers Express (montados bajo /anime en server/index.js) ----------
 
 function sendError(res, e) {
   const notFound = /no encontrado/i.test(e.message)

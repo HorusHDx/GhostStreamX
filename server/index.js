@@ -1,11 +1,11 @@
 // Backend / proxy para GhostStreamX
 // - Funciona como servidor Express local (npm run dev:api)
-// - Y como función serverless en Vercel (a través de vercel.json + este archivo)
+// - Y como función serverless en Vercel (vercel.json: functions + rewrites)
 // Estructura:
-//   handlers/  -> funciones puras (Node-fetch) usables tanto en Express como en serverless
+//   handlers.js / tmdb.js / sources.js / scrapers/  -> lógica (pura, Node fetch)
 //   index.js   -> monta Express localmente
-// Para Vercel usamos vercel.json con `"builds": [{ "src": "api/index.js", ... }]`
-// y este archivo exporta un handler compat con Express.
+// En Vercel, vercel.json declara server/index.js como Serverless Function
+// (maxDuration 60) y los rewrites envían /api/* a esta función.
 
 import 'dotenv/config'
 import express from 'express'

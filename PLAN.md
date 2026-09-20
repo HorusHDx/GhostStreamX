@@ -53,13 +53,13 @@ nunca ve el "detrás de escena" ni arriesga keys.
 
 | Fuente | Cómo resuelve |
 |--------|---------------|
-| **PelisPlus HD** (`api/scrapers/pelisplus.js`) | Busca el título en `pelisplushd.bz/search?s=...`, matchea por título+año, y extrae los servidores `video[N] = 'https://...'` de la página de detalle (película o `temporada/{n}/capitulo/{m}`). |
-| **Poseidon** (`api/scrapers/poseidon.js`) | Va directo por TMDB ID (`/pelicula/{id}` o `/serie/{id}/temporada/{n}/episodio/{m}`), lee los `player.php?h=...` del HTML y resuelve cada uno a la URL final del hoster. |
+| **PelisPlus HD** (`server/scrapers/pelisplus.js`) | Busca el título en `pelisplushd.bz/search?s=...`, matchea por título+año, y extrae los servidores `video[N] = 'https://...'` de la página de detalle (película o `temporada/{n}/capitulo/{m}`). |
+| **Poseidon** (`server/scrapers/poseidon.js`) | Va directo por TMDB ID (`/pelicula/{id}` o `/serie/{id}/temporada/{n}/episodio/{m}`), lee los `player.php?h=...` del HTML y resuelve cada uno a la URL final del hoster. |
 
-**Seguridad (`api/hosts.js`):** solo se reproducen URLs cuyo hosting esté en la
+**Seguridad (`server/hosts.js`):** solo se reproducen URLs cuyo hosting esté en la
 lista blanca (streamwish, filemoon, VOE, doodstream, streamtape, uqload,
 mixdrop, embed69, etc.). Todo lo demás se descarta. Las dos fuentes corren en
-paralelo en `api/sources.js` y el front muestra una pestaña por fuente.
+paralelo en `server/sources.js` y el front muestra una pestaña por fuente.
 
 ---
 
@@ -69,9 +69,9 @@ paralelo en `api/sources.js` y el front muestra una pestaña por fuente.
 GhostStreamX/
 ├── PLAN.md                  # Este documento
 ├── .env.example             # Variables (TMDB key, etc.)
-├── vercel.json              # Rutas API + SPA + maxDuration
+├── vercel.json              # Serverless function + rewrites (SPA y /api)
 ├── package.json
-├── api/
+├── server/
 │   ├── index.js             # Express + rutas + edge cache
 │   ├── handlers.js          # Handlers de cada endpoint
 │   ├── sources.js           # Orquestador de fuentes (P1 PelisPlus, P2 Poseidon)
