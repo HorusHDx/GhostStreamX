@@ -33,6 +33,15 @@ const prettyLang = (l) => {
   return map[l] || l
 }
 
+// Nombre de dominio de una URL, para mostrar el sitio del servidor.
+const hostOf = (u) => {
+  try {
+    return new URL(u).hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
 // Etiquetas de los grupos que devuelve el backend.
 const GROUP_LABELS = { P1: 'PelisPlus HD', P2: 'Poseidon' }
 
@@ -325,74 +334,78 @@ export default function Watch({ type }) {
             })}
           </div>
 
-          {groupSources.length === 0 ? (
-            <div className="mb-6 rounded-[10px] border border-white/10 bg-surface-2 p-4 text-[0.9rem] text-dimtext">
-              {GROUP_LABELS[grupo] || `Servidor ${groupList.indexOf(grupo) + 1}`} no
-              devolvió fuentes para este título.{' '}
-              {groupList.length > 1 && (
-                <button
-                  onClick={() => {
-                    const next =
-                      groupList[(groupList.indexOf(grupo) + 1) % groupList.length]
-                    switchGrupo(next)
-                  }}
-                  className="font-semibold text-spectral hover:underline"
-                >
-                  Usar otra fuente
-                </button>
-              )}
-            </div>
-          ) : null}
+          {/* ---------- LISTA DE SERVIDORES (proveedor activo) ---------- */}
+          <div className="mb-6">
+            <p className="mb-3 text-[0.8rem] font-semibold uppercase tracking-wider text-dimtext">
+              Servidores — {GROUP_LABELS[grupo] || `Fuente ${groupList.indexOf(grupo) + 1}`}
+            </p>
 
-          <div className="mb-6 flex flex-wrap gap-4">
-            <div className="flex flex-col gap-[7px]">
-              <label className="text-[0.75rem] text-dimtext">Idioma / audio</label>
-              <div className="relative flex min-w-[160px] items-center gap-2.5 rounded-[10px] border border-white/10 bg-surface-2 px-4 py-2.5 text-[0.9rem] transition hover:border-spectral/30 hover:bg-[#1c212a]">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-spectral" />
-                <select
-                  value={activeSelected?.language || 'server'}
-                  onChange={(e) => {
-                    const group = byLanguage.get(e.target.value)
-                    if (group && group.length > 0) pickSource(group[0])
-                  }}
-                  className="w-full cursor-pointer appearance-none bg-transparent pr-6 font-sans text-[0.9rem] text-white outline-none [&>option]:bg-surface-2"
-                >
-                  {[...byLanguage.keys()].map((lang) => (
-                    <option key={lang} value={lang}>
+            {groupSources.length === 0 ? (
+              <div className="rounded-[10px] border border-white/10 bg-surface-2 p-4 text-[0.9rem] text-dimtext">
+                {GROUP_LABELS[grupo] || `Servidor ${groupList.indexOf(grupo) + 1}`} no
+                devolvió fuentes para este título.{' '}
+                {groupList.length > 1 && (
+                  <button
+                    onClick={() => {
+                      const next =
+                        groupList[(groupList.indexOf(grupo) + 1) % groupList.length]
+                      switchGrupo(next)
+                    }}
+                    className="font-semibold text-spectral hover:underline"
+                  >
+                    Usar otra fuente
+                  </button>
+                )}
+              </div>
+            ) : (
+              [...byLanguage.entries()].map(([lang, list]) => (
+                <div key={lang} className={byLanguage.size > 1 ? 'mb-3' : ''}>
+                  {byLanguage.size > 1 && (
+                    <p className="mb-1.5 text-[0.75rem] font-medium text-dimtext">
                       {prettyLang(lang)}
-                    </option>
-                  ))}
-                </select>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute right-[14px] text-dimtext">
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-[7px]">
-              <label className="text-[0.75rem] text-dimtext">Servidor</label>
-              <div className="relative flex min-w-[160px] items-center gap-2.5 rounded-[10px] border border-white/10 bg-surface-2 px-4 py-2.5 text-[0.9rem] transition hover:border-spectral/30 hover:bg-[#1c212a]">
-                <select
-                  value={activeSelected?.token || activeSelected?.url || ''}
-                  onChange={(e) => {
-                    const s = groupSources.find(
-                      (x) => (x.token || x.url) === e.target.value
-                    )
-                    if (s) pickSource(s)
-                  }}
-                  className="w-full cursor-pointer appearance-none bg-transparent pr-6 font-sans text-[0.9rem] text-white outline-none [&>option]:bg-surface-2"
-                >
-                  {(byLanguage.get(activeSelected?.language || 'server') || []).map((s, i) => (
-                    <option key={`${s.server || s.name}-${s.token || s.url}-${i}`} value={s.token || s.url}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute right-[14px] text-dimtext">
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </div>
-            </div>
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {list.map((s, i) => {
+                      const isActive =
+                        activeSelected &&
+                        (s.url || '') === (activeSelected.url || '') &&
+                        (s.name || '') === (activeSelected.name || '')
+                      return (
+                        <button
+                          key={`${s.name || s.url}-${i}`}
+                          onClick={() => pickSource(s)}
+                          className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2 text-left transition ${
+                            isActive
+                              ? 'border-spectral bg-spectral-dim/15 text-white'
+                              : 'border-white/10 bg-white/5 text-dimtext hover:border-white/25 hover:text-white'
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                              isActive ? 'bg-spectral' : 'bg-white/20'
+                            }`}
+                          />
+                          <span className="flex flex-col leading-tight">
+                            <span className="text-[0.85rem] font-semibold">
+                              {s.name || `Servidor ${i + 1}`}
+                            </span>
+                            <span className="text-[0.7rem] text-dimtext/80">
+                              {hostOf(s.url) || 'embed externo'}
+                            </span>
+                          </span>
+                          {isActive && (
+                            <span className="ml-1 rounded-full border border-spectral/40 bg-spectral/15 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wide text-spectral">
+                              Reproduciendo
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {(currentEpisode?.overview || (type === 'movie' && meta.overview)) && (
