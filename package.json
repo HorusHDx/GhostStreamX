@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "allowScripts": {
+    "esbuild": true
+  },
   "description": "GhostStreamX - Web stream propio tipo Netflix: metadata via TMDB, reproduccion resuelta con scrapers propios (PelisPlus HD, Poseidon) y lista blanca de hosts.",
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"node server/index.js\" \"vite\"",
