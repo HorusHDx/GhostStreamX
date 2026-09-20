@@ -4,8 +4,8 @@
 // Estructura:
 //   handlers.js / tmdb.js / sources.js / scrapers/  -> lógica (pura, Node fetch)
 //   index.js   -> monta Express localmente
-// En Vercel, vercel.json declara server/index.js como Serverless Function
-// (maxDuration 60) y los rewrites envían /api/* a esta función.
+// En Vercel, api/index.js (único archivo en /api) re-exporta este app como
+// Serverless Function con maxDuration 60; los rewrites envían /api/* ahí.
 
 import 'dotenv/config'
 import express from 'express'

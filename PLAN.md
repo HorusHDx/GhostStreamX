@@ -71,6 +71,8 @@ GhostStreamX/
 ├── .env.example             # Variables (TMDB key, etc.)
 ├── vercel.json              # Serverless function + rewrites (SPA y /api)
 ├── package.json
+├── api/
+│   └── index.js             # Único archivo en /api: re-exporta server/index.js (la función de Vercel)
 ├── server/
 │   ├── index.js             # Express + rutas + edge cache
 │   ├── handlers.js          # Handlers de cada endpoint
