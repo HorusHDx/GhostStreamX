@@ -160,6 +160,15 @@ export default function Watch({ type }) {
       .catch(() => setEpisodes([]))
   }, [type, id, seasonNum])
 
+  // Auto-scroll: centra el episodio actual en el carrusel al cargar.
+  useEffect(() => {
+    if (type !== 'tv' || episodes.length === 0) return
+    const idx = episodes.findIndex((e) => String(e.episode_number) === String(episodeParam))
+    if (idx < 0) return
+    const card = epTrackRef.current?.children[idx]
+    card?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  }, [type, episodes, episodeParam])
+
   // Recomendados reales: secuelas, misma saga y similares (TMDB).
   useEffect(() => {
     const p = type === 'movie' ? api.movieRecs(id) : api.tvRecs(id)
@@ -395,13 +404,45 @@ export default function Watch({ type }) {
           {showNext && (
             <Link
               to={`/watch/tv/${id}?season=${seasonNum}&episode=${nextEpisode.episode_number}`}
-              className="inline-flex items-center gap-2 rounded-full border border-spectral-dim px-5 py-2.5 text-[0.9rem] font-semibold text-spectral transition hover:bg-spectral-dim"
+              className="group relative mt-1 mb-6 block overflow-hidden rounded-[14px] border border-white/10 shadow-[0_14px_40px_rgba(0,0,0,0.35)]"
             >
-              Siguiente episodio: E{nextEpisode.episode_number}
-              {nextEpisode.name ? ` — ${nextEpisode.name}` : ''}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="m9 18 6-6-6-6" />
-              </svg>
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{
+                  backgroundImage: nextEpisode.still_path
+                    ? `url(https://image.tmdb.org/t/p/w780${nextEpisode.still_path})`
+                    : 'linear-gradient(150deg,#2a3450,#10141f)',
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/30" />
+
+              <div className="relative z-[2] flex items-center gap-4 px-5 py-4">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/10 backdrop-blur-sm transition group-hover:border-transparent group-hover:bg-spectral">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" className="ml-[1px] transition group-hover:fill-bg">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-spectral">
+                    A continuación · Temporada {seasonNum}
+                  </p>
+                  <p className="mt-0.5 truncate text-[1.02rem] font-bold">
+                    E{nextEpisode.episode_number}
+                    {nextEpisode.name ? ` — ${nextEpisode.name}` : ''}
+                  </p>
+                  <p className="mt-0.5 truncate text-[0.8rem] text-dimtext">
+                    {nextEpisode.runtime ? `${nextEpisode.runtime} min` : 'Episodio'}
+                    {nextEpisode.overview
+                      ? ` · ${nextEpisode.overview.slice(0, 80).trim()}${nextEpisode.overview.length > 80 ? '…' : ''}`
+                      : ''}
+                  </p>
+                </div>
+
+                <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-[0.85rem] font-semibold whitespace-nowrap backdrop-blur-sm transition group-hover:border-transparent group-hover:bg-spectral group-hover:text-bg md:inline-flex">
+                  ▶ Reproducir
+                </span>
+              </div>
             </Link>
           )}
         </div>
