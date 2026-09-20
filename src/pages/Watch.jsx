@@ -37,6 +37,34 @@ const prettyLang = (l) => {
 // proveedor real de cada grupo.
 const GROUP_LABELS = { P1: 'Servidor 1', P2: 'Servidor 2' }
 
+// Convierte la URL de un servidor en su enlace directo de descarga cuando el
+// hoster expone una página dedicada para eso (la misma convención que usan
+// los reproductores conocidos). Si no hay página de descarga, se devuelve la
+// misma URL: al abrirla el usuario ve el embed con sus opciones.
+const downloadUrlFor = (u) => {
+  if (!u) return ''
+  const low = u.toLowerCase()
+  // Archivos directos: abrir ya es descargar.
+  if (/\.(mp4|mkv|webm|mov|m3u8)(\?|$)/i.test(u)) return u
+  // Streamwish / EmbedWish / HgPlay: /e/ (player) -> /f/ (descarga).
+  if (low.includes('streamwish') || low.includes('embedwish') || low.includes('hgplay')) {
+    return u.replace(/\/e\//i, '/f/')
+  }
+  // VidHide / Minochinos: /v/ (player) -> /d/ (descarga).
+  if (low.includes('vidhide') || low.includes('minochinos')) {
+    return u.replace(/\/v\//i, '/d/')
+  }
+  // Filemoon / MyVidPlay: /e/ -> /d/.
+  if (low.includes('filemoon') || low.includes('myvidplay')) {
+    return u.replace(/\/e\//i, '/d/')
+  }
+  // Doodstream: /e/ -> /d/.
+  if (low.includes('doodstream') || low.includes('dood.')) {
+    return u.replace(/\/e\//i, '/d/')
+  }
+  return u
+}
+
 export default function Watch({ type }) {
   const { id } = useParams()
   const [params] = useSearchParams()
@@ -55,6 +83,7 @@ export default function Watch({ type }) {
   const [seasonNum, setSeasonNum] = useState(Number(seasonParam) || 1)
   const [episodes, setEpisodes] = useState([])
   const [recs, setRecs] = useState([])
+  const [dlOpen, setDlOpen] = useState(false) // panel de descarga visible
 
   const epTrackRef = useRef(null)
   const recTrackRef = useRef(null)
@@ -157,14 +186,6 @@ export default function Watch({ type }) {
     () => sources.filter((s) => (s.group || 'P1') === grupo),
     [sources, grupo]
   )
-  const counts = useMemo(() => {
-    const c = {}
-    for (const s of sources) {
-      const g = s.group || 'P1'
-      c[g] = (c[g] || 0) + 1
-    }
-    return c
-  }, [sources])
   const switchGrupo = (g) => {
     setGrupo(g)
     setResolveError('')
@@ -185,6 +206,16 @@ export default function Watch({ type }) {
   const activeSelected =
     selected && (selected.group || 'P1') === grupo ? selected : null
   const effective = activeSelected && activeSelected.url ? activeSelected : null
+
+  // Índice del servidor activo dentro del grupo, para posicionar el dropdown.
+  const selectedIdx = useMemo(() => {
+    if (!activeSelected) return -1
+    return groupSources.findIndex(
+      (s) =>
+        (s.url || '') === (activeSelected.url || '') &&
+        (s.name || '') === (activeSelected.name || '')
+    )
+  }, [groupSources, activeSelected])
 
   const currentEpisode =
     type === 'tv'
@@ -286,6 +317,17 @@ export default function Watch({ type }) {
           >
             Abrir externo ↗
           </a>
+          <button
+            onClick={() => {
+              setDlOpen(true)
+              document
+                .getElementById('servidores')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-spectral-dim bg-spectral-dim/15 px-4 py-1.5 text-[0.82rem] font-semibold text-spectral transition hover:bg-spectral-dim/30"
+          >
+            ⬇ Descargar
+          </button>
           <span className="text-[0.78rem] text-dimtext">
             Si el video no carga dentro del reproductor, ábrelo en pestaña
             nueva o probá otro servidor.
@@ -320,17 +362,29 @@ export default function Watch({ type }) {
                       : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
                   }`}
                 >
-                  {label} ({counts[g] || 0})
+                  {label}
                 </button>
               )
             })}
           </div>
 
-          {/* ---------- LISTA DE SERVIDORES (proveedor activo) ---------- */}
-          <div className="mb-6">
-            <p className="mb-3 text-[0.8rem] font-semibold uppercase tracking-wider text-dimtext">
-              Servidores — {GROUP_LABELS[grupo] || `Fuente ${groupList.indexOf(grupo) + 1}`}
-            </p>
+          {/* ---------- SELECCIÓN + DESCARGA DE SERVIDORES ---------- */}
+          <div id="servidores" className="mb-6">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[0.8rem] font-semibold uppercase tracking-wider text-dimtext">
+                Servidores · {GROUP_LABELS[grupo] || `Fuente ${groupList.indexOf(grupo) + 1}`}
+              </p>
+              <button
+                onClick={() => setDlOpen((v) => !v)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[0.8rem] font-semibold transition ${
+                  dlOpen
+                    ? 'border-spectral-dim bg-spectral-dim/20 text-spectral'
+                    : 'border-white/10 bg-white/5 text-dimtext hover:text-white'
+                }`}
+              >
+                {dlOpen ? '✕ Cerrar descargas' : '⬇ Descargar'}
+              </button>
+            </div>
 
             {groupSources.length === 0 ? (
               <div className="rounded-[10px] border border-white/10 bg-surface-2 p-4 text-[0.9rem] text-dimtext">
@@ -349,51 +403,131 @@ export default function Watch({ type }) {
                   </button>
                 )}
               </div>
-            ) : (
-              [...byLanguage.entries()].map(([lang, list]) => (
-                <div key={lang} className={byLanguage.size > 1 ? 'mb-3' : ''}>
-                  {byLanguage.size > 1 && (
-                    <p className="mb-1.5 text-[0.75rem] font-medium text-dimtext">
-                      {prettyLang(lang)}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {list.map((s, i) => {
-                      const isActive =
-                        activeSelected &&
-                        (s.url || '') === (activeSelected.url || '') &&
-                        (s.name || '') === (activeSelected.name || '')
-                      return (
-                        <button
-                          key={`${s.name || s.url}-${i}`}
-                          onClick={() => pickSource(s)}
-                          className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2 text-left transition ${
-                            isActive
-                              ? 'border-spectral bg-spectral-dim/15 text-white'
-                              : 'border-white/10 bg-white/5 text-dimtext hover:border-white/25 hover:text-white'
-                          }`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                              isActive ? 'bg-spectral' : 'bg-white/20'
-                            }`}
-                          />
-                          <span className="flex flex-col leading-tight">
-                            <span className="text-[0.85rem] font-semibold">
-                              {s.name || `Servidor ${i + 1}`}
-                            </span>
-                          </span>
-                          {isActive && (
-                            <span className="ml-1 rounded-full border border-spectral/40 bg-spectral/15 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wide text-spectral">
-                              Reproduciendo
-                            </span>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
+            ) : dlOpen ? (
+              /* ---------- PANEL DE DESCARGA ---------- */
+              <div className="rounded-[14px] border border-white/10 bg-surface-2 p-4">
+                <div className="mb-3">
+                  <p className="text-[0.95rem] font-semibold">
+                    ⬇ Descargar —{' '}
+                    {type === 'movie'
+                      ? meta.title || 'Película'
+                      : `Temporada ${seasonParam} · Episodio ${episodeParam}`}
+                  </p>
+                  <p className="text-[0.78rem] text-dimtext">
+                    Elegí un servidor: la descarga se abre en su página oficial, en otra
+                    pestaña.
+                  </p>
                 </div>
-              ))
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {groupSources.map((s, i) => (
+                    <div
+                      key={`${s.name || s.url}-${i}`}
+                      className="flex items-center justify-between gap-2 rounded-[10px] border border-white/10 bg-white/5 px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[0.85rem] font-semibold">
+                          {s.name || `Servidor ${i + 1}`}
+                        </p>
+                        {s.language && (
+                          <p className="text-[0.72rem] text-dimtext">{prettyLang(s.language)}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => window.open(downloadUrlFor(s.url), '_blank', 'noopener')}
+                        className="shrink-0 rounded-full border border-spectral-dim bg-spectral-dim/15 px-3 py-1.5 text-[0.78rem] font-bold text-spectral transition hover:bg-spectral-dim/30"
+                      >
+                        ⬇ Descargar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setDlOpen(false)}
+                  className="mt-3 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-spectral transition hover:underline"
+                >
+                  ← Volver al reproductor
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Dropdown para cambiar de servidor al instante */}
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <select
+                    value={String(selectedIdx >= 0 ? selectedIdx : 0)}
+                    onChange={(e) => {
+                      if (e.target.value === '__DL__') {
+                        setDlOpen(true)
+                        return
+                      }
+                      const s = groupSources[Number(e.target.value)]
+                      if (s) pickSource(s)
+                    }}
+                    className="h-10 max-w-full rounded-[10px] border border-white/15 bg-surface-2 px-3 text-[0.85rem] font-medium text-white outline-none transition focus:border-spectral-dim"
+                  >
+                    {[...byLanguage.entries()].map(([lang, list]) =>
+                      list.map((s, i) => (
+                        <option
+                          key={`opt-${s.url || s.name}-${i}`}
+                          value={String(groupSources.indexOf(s))}
+                        >
+                          {byLanguage.size > 1 ? `${prettyLang(lang)} · ` : ''}
+                          {s.name || `Servidor ${i + 1}`}
+                        </option>
+                      ))
+                    )}
+                    <option value="__DL__">⬇ Descargar</option>
+                  </select>
+                  <span className="text-[0.78rem] text-dimtext">
+                    Cambiá de servidor en el listado, o usá el panel de descarga arriba.
+                  </span>
+                </div>
+
+                {/* Lista visible, separada por idioma */}
+                {[...byLanguage.entries()].map(([lang, list]) => (
+                  <div key={lang} className={byLanguage.size > 1 ? 'mb-3' : ''}>
+                    {byLanguage.size > 1 && (
+                      <p className="mb-1.5 text-[0.75rem] font-medium text-dimtext">
+                        {prettyLang(lang)}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {list.map((s, i) => {
+                        const isActive =
+                          activeSelected &&
+                          (s.url || '') === (activeSelected.url || '') &&
+                          (s.name || '') === (activeSelected.name || '')
+                        return (
+                          <button
+                            key={`${s.name || s.url}-${i}`}
+                            onClick={() => pickSource(s)}
+                            className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2 text-left transition ${
+                              isActive
+                                ? 'border-spectral bg-spectral-dim/15 text-white'
+                                : 'border-white/10 bg-white/5 text-dimtext hover:border-white/25 hover:text-white'
+                            }`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                                isActive ? 'bg-spectral' : 'bg-white/20'
+                              }`}
+                            />
+                            <span className="flex flex-col leading-tight">
+                              <span className="text-[0.85rem] font-semibold">
+                                {s.name || `Servidor ${i + 1}`}
+                              </span>
+                            </span>
+                            {isActive && (
+                              <span className="ml-1 rounded-full border border-spectral/40 bg-spectral/15 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wide text-spectral">
+                                Reproduciendo
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
           </div>
 
