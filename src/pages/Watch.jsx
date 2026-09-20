@@ -274,15 +274,7 @@ export default function Watch({ type }) {
 
       {/* ---------- ACCIONES DEL REPRODUCTOR ---------- */}
       {!loading && effective && (
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <a
-            href={effective.url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[0.82rem] font-semibold text-dimtext transition hover:text-white"
-          >
-            Abrir externo ↗
-          </a>
+        <div className="mt-3 flex items-center justify-end">
           <button
             onClick={() => setDlOpen((v) => !v)}
             className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-[0.82rem] font-semibold transition ${
