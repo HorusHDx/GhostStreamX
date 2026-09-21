@@ -1,0 +1,15 @@
+# Config para desplegar el Worker dedicado de cuevana3.gs con Wrangler (CLI).
+#
+# Uso (desde la carpeta worker/):
+#   npx wrangler login
+#   npx wrangler deploy -c wrangler-cuevana.toml
+#
+# El token debe coincidir con CUEVANA_PROXY_TOKEN en Vercel, y la URL del
+# worker (work-cuevana.TU-subdominio.workers.dev) como CUEVANA_PROXY_URL.
+
+name = "work-cuevana"
+main = "cuevana.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+SCRAPE_TOKEN = "gsx-cuevana-2026-7h2p"
