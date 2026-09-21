@@ -37,6 +37,7 @@ const ALLOWED = [
   'mixdrop.ag',
   'vidhidepro.com',
   'vidhide.com',
+  'vidhideplus.com',
   'morencius.com',
   'hglink.to',
   'bysejikuar.com',
@@ -62,6 +63,10 @@ const ALLOWED = [
   'mycloudvideos.to',
   'embedsito.com',
   'embedsito.to',
+  'waaw.to',
+  'emturbovid.com',
+  'vudeo.co',
+  'upns.pro',
 
   // --- Agregadores de video externos compatibles ---
   'vidsrc.me',
@@ -96,6 +101,7 @@ const NAMES = {
   'mixdrop.ag': 'Mixdrop',
   'vidhidepro.com': 'VidHide',
   'vidhide.com': 'VidHide',
+  'vidhideplus.com': 'VidHide',
   'morencius.com': 'VidHide',
   'hglink.to': 'Streamwish',
   'bysejikuar.com': 'Bysejikuar',
@@ -130,6 +136,10 @@ const NAMES = {
   'pelisplushd.bz': 'PelisPlus HD',
   'poseidonhd2.co': 'Poseidon',
   'player.poseidonhd2.co': 'Poseidon',
+  'waaw.to': 'Waaw',
+  'emturbovid.com': 'EmTurboVid',
+  'vudeo.co': 'VuDeo',
+  'upns.pro': 'Upns',
 }
 
 // ¿La URL es de un host permitido?

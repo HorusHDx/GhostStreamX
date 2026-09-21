@@ -35,7 +35,7 @@ const prettyLang = (l) => {
 
 // Etiquetas genéricas de los grupos: solo "Servidor N", sin revelar el
 // proveedor real de cada grupo.
-const GROUP_LABELS = { P1: 'Servidor 1', P2: 'Servidor 2' }
+const GROUP_LABELS = { P1: 'Servidor 1', P2: 'Servidor 2', P3: 'Servidor 3' }
 
 // Convierte la URL de un servidor en su enlace directo de descarga cuando el
 // hoster expone una página dedicada para eso (la misma convención que usan
