@@ -5,7 +5,8 @@
 //   P2  Poseidon      -> por TMDB ID (poseidonhd2.co), player.php -> embed
 //   P3  TioPlus       -> por título (tioplus.app), /player/{btoa} -> embed
 //   P4  Cuevana3      -> por título (cuevana3.gs), API JSON propia + player.php
-//
+//   P5  NasriPlay     -> por TMDB ID (nsrplay.space), API de terceros aprobada
+//                        (única excepción a "solo scraping directo")
 // Todos corren en paralelo y son independientes: si uno falla o no tiene el
 // título, los demás siguen devolviendo sus fuentes con su `group`.
 
@@ -15,6 +16,7 @@ import { resolvePelisPlus } from './scrapers/pelisplus.js'
 import { resolvePoseidon } from './scrapers/poseidon.js'
 import { resolveTioPlus } from './scrapers/tioplus.js'
 import { resolveCuevana3 } from './scrapers/cuevana3.js'
+import { resolveNsrPlay } from './scrapers/nsrplay.js'
 
 export async function resolveSources({ type, tmdbId, season = 1, episode = 1 }) {
   // Metadata mínima (título + original + año) para buscar el slug en los
@@ -31,23 +33,26 @@ export async function resolveSources({ type, tmdbId, season = 1, episode = 1 }) 
     // Sin metadata no hay búsqueda por título; Poseidon aún puede responder.
   }
 
-  const [p1, p2, p3, p4] = await Promise.allSettled([
+  const [p1, p2, p3, p4, p5] = await Promise.allSettled([
     resolvePelisPlus({ type, tmdbId, title, originalTitle, year, season, episode }),
     resolvePoseidon({ type, tmdbId, title, season, episode }),
     resolveTioPlus({ type, tmdbId, title, originalTitle, year, season, episode }),
     resolveCuevana3({ type, tmdbId, title, originalTitle, year, season, episode }),
+    resolveNsrPlay({ type, tmdbId, season, episode }),
   ])
 
   const pelis = p1.status === 'fulfilled' ? p1.value : []
   const poseidon = p2.status === 'fulfilled' ? p2.value : []
   const tioplus = p3.status === 'fulfilled' ? p3.value : []
   const cuevana = p4.status === 'fulfilled' ? p4.value : []
+  const nsrplay = p5.status === 'fulfilled' ? p5.value : []
 
   const combined = [
     ...pelis.map((s) => ({ ...s, group: 'P1' })),
     ...poseidon.map((s) => ({ ...s, group: 'P2' })),
     ...tioplus.map((s) => ({ ...s, group: 'P3' })),
     ...cuevana.map((s) => ({ ...s, group: 'P4' })),
+    ...nsrplay.map((s) => ({ ...s, group: 'P5' })),
   ]
 
   // Red de seguridad final: solo fuentes de hosts permitidos.
