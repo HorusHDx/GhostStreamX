@@ -13,6 +13,11 @@ const ALLOWED = [
   'poseidonhd2.co',
   'player.poseidonhd2.co',
 
+  // --- Proxy de reproducción de NasriPlay (P5, excepción aprobada) ---
+  // Solo sirve streams HLS directos con token (kind:'direct', <video> con
+  // hls.js). Nunca se usa como iframe de hoster.
+  'nsrplay.space',
+
   // --- Hosters de video embebido (streaming) ---
   'streamwish.to',
   'streamwish.pro',

@@ -51,7 +51,9 @@ export async function resolveNsrPlay({ type, tmdbId, season = 1, episode = 1 }) 
     return []
   }
 
-  if (!json || json.success !== true || !Array.isArray(json.servers)) return []
+  if (!json || json.success !== true || !Array.isArray(json.servers)) {
+    return []
+  }
 
   const seen = new Set()
   const count = {}
